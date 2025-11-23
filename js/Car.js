@@ -32,31 +32,43 @@ class Car {
         this.driftFactor = 0.95; // 1 = no drift, lower = more drift
         this.currentGrip = 1.0;
 
+        // Tyre wear (0 = fresh, 1 = completely worn)
+        this.tireWear = 0;
+        this.tireLifeLaps = null; // will be set based on compound the first time we need it
+
         this.width = 20;
         this.height = 40;
     }
 
     update(input, deltaTime, track, cars, weather, raceActive = true) {
-        // Calculate Grip based on Tire and Weather
+        // Lateral grip (steering) based on tire, weather and wear.
+        // This should NOT affect straight-line acceleration/top speed.
         let gripMultiplier = 1.0;
 
         if (weather === 'RAIN') {
-            if (this.tire === 'WET') gripMultiplier = 0.9;
-            else if (this.tire === 'INTER') gripMultiplier = 0.7;
-            else gripMultiplier = 0.3; // Slicks in rain = ice
+            // In the wet: wets best, inters decent, slicks much worse.
+            if (this.tire === 'WET') gripMultiplier = 1.0;
+            else if (this.tire === 'INTER') gripMultiplier = 0.85;
+            else gripMultiplier = 0.4; // slicks in rain
         } else {
-            // Sunny
+            // Dry conditions: softer = more agile, harder = more understeer.
             if (this.tire === 'SOFT') gripMultiplier = 1.0;
-            else if (this.tire === 'HARD') gripMultiplier = 0.95;
-            else gripMultiplier = 0.8; // Wets in dry = bad
+            else if (this.tire === 'MEDIUM') gripMultiplier = 0.85;
+            else if (this.tire === 'HARD') gripMultiplier = 0.7;
+            else if (this.tire === 'INTER') gripMultiplier = 0.6;
+            else if (this.tire === 'WET') gripMultiplier = 0.5;
         }
 
-        this.currentGrip = gripMultiplier;
+        // Apply wear effect: as tireWear → 1, reduce effective grip but never below 40%
+        const wear = this.tireWear || 0;
+        let wearFactor = 1 - wear * 0.6; // at full wear, 40% of base grip
+        if (wearFactor < 0.4) wearFactor = 0.4;
+        this.currentGrip = gripMultiplier * wearFactor;
 
         // Check for Grass
         if (track && !track.isOnTrack(this.x, this.y)) {
-            this.currentGrip *= 0.9; // 90% Grip
-            this.speed *= 0.99; // Slight slowdown
+            this.currentGrip *= 0.9; // less turning grip on grass
+            this.speed *= 0.99; // slight straight-line slowdown on grass
         }
 
         // Hold cars stationary until race start (used for F1-style start lights)
@@ -66,25 +78,25 @@ class Car {
         }
 
         if (this.isPlayer && input) {
-            // Acceleration (ArrowUp)
+            // Acceleration (ArrowUp) – independent of tire compound
             if (input.keys.ArrowUp) {
-                this.speed += this.acceleration * this.currentGrip;
+                this.speed += this.acceleration;
             }
 
-            // Brake (Space) – make braking noticeable but not too aggressive
+            // Brake (Space) – constant effect, independent of tire compound
             if (input.keys.Space) {
                 this.speed *= 0.97; // Softer braking than before (was 0.9)
             }
 
-            // Reverse / Slow down
+            // Reverse / Slow down – also independent of tire compound
             if (input.keys.ArrowDown) {
-                this.speed -= this.acceleration * 0.5 * this.currentGrip;
+                this.speed -= this.acceleration * 0.5;
             }
 
             // Steering with speed-sensitive understeer
             if (Math.abs(this.speed) > 0.1) {
                 const flip = this.speed > 0 ? 1 : -1;
-                // Grip affects steering too; higher grip → more potential steering.
+                // Grip affects steering only; higher grip → more potential steering.
                 let steerAmount = this.rotationSpeed * (0.4 + 0.6 * this.currentGrip);
 
                 // Strong understeer at high speed:

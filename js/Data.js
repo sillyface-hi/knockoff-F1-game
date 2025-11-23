@@ -104,7 +104,7 @@ window.TRACKS = [
     {
         id: 'monza',
         name: 'Monza',
-        laps: 5,
+        laps: 25,
         waypoints: [
             // Start/Finish Straight
             { x: 0, y: 0, width: 220 },
@@ -178,7 +178,7 @@ window.TRACKS = [
     {
         id: 'silverstone',
         name: 'Silverstone',
-        laps: 5,
+        laps: 25,
         waypoints: [
             // Start/Finish
             { x: 0, y: 0, width: 220 },
@@ -293,7 +293,7 @@ window.TRACKS = [
     {
         id: 'spa',
         name: 'Spa-Francorchamps',
-        laps: 4,
+        laps: 25,
         waypoints: [
             { x: 0, y: 0, width: 200 }, { x: 150, y: 50, width: 180 }, { x: 250, y: 150, width: 160 }, { x: 300, y: 250, width: 150 }, { x: 320, y: 350, width: 150 }, { x: 300, y: 440, width: 160 }, { x: 250, y: 500, width: 170 }, { x: 200, y: 450, width: 180 }, { x: 180, y: 350, width: 190 }, { x: 200, y: 250, width: 200 }, { x: 250, y: 180, width: 200 }, { x: 320, y: 120, width: 200 }, { x: 400, y: 50, width: 200 }, { x: 500, y: -20, width: 200 }, { x: 600, y: -100, width: 200 }, { x: 700, y: -200, width: 200 }, { x: 800, y: -320, width: 200 }, { x: 900, y: -400, width: 200 }, { x: 1050, y: -450, width: 210 }, { x: 1200, y: -480, width: 210 }, { x: 1350, y: -500, width: 210 }, { x: 1500, y: -510, width: 210 }, { x: 1650, y: -500, width: 210 }, { x: 1800, y: -480, width: 200 }, { x: 1920, y: -440, width: 190 }, { x: 2020, y: -380, width: 180 }, { x: 2100, y: -300, width: 170 }, { x: 2150, y: -210, width: 160 }, { x: 2180, y: -110, width: 160 }, { x: 2200, y: -10, width: 170 }, { x: 2220, y: 90, width: 180 }, { x: 2230, y: 190, width: 190 }, { x: 2220, y: 290, width: 190 }, { x: 2180, y: 380, width: 190 }, { x: 2120, y: 460, width: 190 }, { x: 2040, y: 530, width: 190 }, { x: 1950, y: 590, width: 190 }, { x: 1850, y: 640, width: 190 }, { x: 1740, y: 680, width: 190 }, { x: 1620, y: 710, width: 190 }, { x: 1500, y: 730, width: 190 }, { x: 1380, y: 740, width: 190 }, { x: 1260, y: 740, width: 190 }, { x: 1150, y: 720, width: 190 }, { x: 1050, y: 680, width: 190 }, { x: 970, y: 620, width: 190 }, { x: 910, y: 550, width: 190 }, { x: 870, y: 470, width: 190 }, { x: 800, y: 400, width: 200 }, { x: 700, y: 350, width: 200 }, { x: 600, y: 320, width: 200 }, { x: 500, y: 300, width: 200 }, { x: 400, y: 290, width: 200 }, { x: 300, y: 280, width: 200 }, { x: 200, y: 270, width: 200 }, { x: 100, y: 250, width: 200 }, { x: 0, y: 220, width: 210 }, { x: -100, y: 180, width: 210 }, { x: -180, y: 120, width: 200 }, { x: -240, y: 50, width: 190 }, { x: -280, y: -30, width: 180 }, { x: -300, y: -110, width: 170 }, { x: -280, y: -190, width: 160 }, { x: -230, y: -250, width: 150 }, { x: -160, y: -280, width: 150 }, { x: -80, y: -260, width: 160 }, { x: -20, y: -200, width: 170 }, { x: 10, y: -120, width: 180 }, { x: 20, y: -40, width: 190 }, { x: 10, y: 40, width: 200 }, { x: 0, y: 0, width: 200 }
         ],
@@ -302,7 +302,7 @@ window.TRACKS = [
     {
         id: 'monaco',
         name: 'Monaco',
-        laps: 6,
+        laps: 25,
         waypoints: [
             { x: 0, y: 0, width: 150 }, { x: 80, y: -30, width: 145 }, { x: 160, y: -70, width: 140 }, { x: 230, y: -120, width: 135 }, { x: 280, y: -180, width: 130 }, { x: 320, y: -250, width: 130 }, { x: 350, y: -330, width: 130 }, { x: 370, y: -410, width: 130 }, { x: 380, y: -490, width: 130 }, { x: 370, y: -570, width: 130 }, { x: 340, y: -640, width: 130 }, { x: 300, y: -700, width: 130 }, { x: 250, y: -750, width: 130 }, { x: 190, y: -790, width: 130 }, { x: 120, y: -820, width: 130 }, { x: 50, y: -840, width: 130 }, { x: -20, y: -850, width: 130 }, { x: -90, y: -840, width: 130 }, { x: -150, y: -810, width: 130 }, { x: -200, y: -760, width: 125 }, { x: -230, y: -700, width: 120 }, { x: -250, y: -630, width: 115 }, { x: -260, y: -560, width: 110 }, { x: -250, y: -490, width: 115 }, { x: -220, y: -430, width: 120 }, { x: -180, y: -380, width: 125 }, { x: -130, y: -340, width: 130 }, { x: -70, y: -310, width: 135 }, { x: 0, y: -290, width: 140 }, { x: 80, y: -280, width: 145 }, { x: 160, y: -280, width: 145 }, { x: 240, y: -290, width: 145 }, { x: 320, y: -310, width: 145 }, { x: 400, y: -340, width: 145 }, { x: 480, y: -370, width: 145 }, { x: 560, y: -390, width: 145 }, { x: 640, y: -400, width: 145 }, { x: 720, y: -390, width: 145 }, { x: 790, y: -360, width: 145 }, { x: 850, y: -310, width: 145 }, { x: 890, y: -250, width: 145 }, { x: 910, y: -180, width: 145 }, { x: 910, y: -110, width: 145 }, { x: 890, y: -40, width: 145 }, { x: 850, y: 20, width: 145 }, { x: 790, y: 70, width: 145 }, { x: 720, y: 110, width: 145 }, { x: 640, y: 140, width: 145 }, { x: 560, y: 160, width: 145 }, { x: 480, y: 170, width: 145 }, { x: 400, y: 170, width: 145 }, { x: 320, y: 160, width: 145 }, { x: 250, y: 140, width: 145 }, { x: 190, y: 110, width: 145 }, { x: 140, y: 70, width: 145 }, { x: 100, y: 20, width: 145 }, { x: 70, y: -30, width: 145 }, { x: 50, y: -80, width: 145 }, { x: 30, y: -40, width: 147 }, { x: 10, y: 0, width: 150 }, { x: 0, y: 0, width: 150 }
         ],
@@ -311,7 +311,7 @@ window.TRACKS = [
     {
         id: 'suzuka',
         name: 'Suzuka',
-        laps: 5,
+        laps: 25,
         waypoints: [
             { x: 0, y: 0, width: 200 }, { x: 150, y: 0, width: 200 }, { x: 300, y: 10, width: 200 }, { x: 450, y: 30, width: 200 }, { x: 590, y: 60, width: 190 }, { x: 720, y: 110, width: 180 }, { x: 830, y: 180, width: 170 }, { x: 920, y: 270, width: 160 }, { x: 980, y: 370, width: 160 }, { x: 1010, y: 480, width: 160 }, { x: 1000, y: 590, width: 160 }, { x: 960, y: 690, width: 160 }, { x: 890, y: 770, width: 160 }, { x: 800, y: 830, width: 160 }, { x: 700, y: 870, width: 170 }, { x: 590, y: 890, width: 180 }, { x: 480, y: 880, width: 180 }, { x: 380, y: 840, width: 180 }, { x: 300, y: 770, width: 180 }, { x: 240, y: 680, width: 180 }, { x: 210, y: 580, width: 180 }, { x: 210, y: 480, width: 180 }, { x: 240, y: 390, width: 180 }, { x: 300, y: 320, width: 180 }, { x: 380, y: 270, width: 180 }, { x: 470, y: 240, width: 180 }, { x: 560, y: 230, width: 180 }, { x: 650, y: 240, width: 180 }, { x: 730, y: 270, width: 180 }, { x: 800, y: 320, width: 180 }, { x: 850, y: 390, width: 180 }, { x: 880, y: 470, width: 180 }, { x: 890, y: 560, width: 180 }, { x: 880, y: 650, width: 180 }, { x: 850, y: 730, width: 180 }, { x: 800, y: 800, width: 180 }, { x: 730, y: 850, width: 180 }, { x: 650, y: 880, width: 180 }, { x: 560, y: 890, width: 180 }, { x: 470, y: 880, width: 180 }, { x: 390, y: 850, width: 180 }, { x: 320, y: 800, width: 180 }, { x: 270, y: 730, width: 180 }, { x: 240, y: 650, width: 180 }, { x: 230, y: 560, width: 180 }, { x: 240, y: 470, width: 180 }, { x: 270, y: 390, width: 180 }, { x: 320, y: 320, width: 180 }, { x: 390, y: 270, width: 180 }, { x: 470, y: 240, width: 180 }, { x: 560, y: 230, width: 180 }, { x: 650, y: 240, width: 180 }, { x: 730, y: 270, width: 180 }, { x: 800, y: 320, width: 180 }, { x: 850, y: 390, width: 180 }, { x: 0, y: 0, width: 200 }
         ],
@@ -320,7 +320,7 @@ window.TRACKS = [
     {
         id: 'interlagos',
         name: 'Interlagos',
-        laps: 5,
+        laps: 25,
         waypoints: [
             { x: 0, y: 0, width: 200 }, { x: -50, y: 100, width: 190 }, { x: -120, y: 190, width: 180 }, { x: -210, y: 260, width: 170 }, { x: -310, y: 310, width: 160 }, { x: -410, y: 340, width: 160 }, { x: -510, y: 350, width: 160 }, { x: -600, y: 330, width: 170 }, { x: -670, y: 280, width: 180 }, { x: -710, y: 210, width: 190 }, { x: -720, y: 130, width: 190 }, { x: -700, y: 50, width: 190 }, { x: -650, y: -20, width: 190 }, { x: -580, y: -80, width: 190 }, { x: -490, y: -120, width: 190 }, { x: -390, y: -140, width: 190 }, { x: -280, y: -140, width: 190 }, { x: -170, y: -120, width: 190 }, { x: -70, y: -80, width: 200 }, { x: 20, y: -20, width: 200 }, { x: 100, y: 50, width: 200 }, { x: 160, y: 130, width: 200 }, { x: 200, y: 220, width: 200 }, { x: 220, y: 310, width: 200 }, { x: 220, y: 400, width: 200 }, { x: 200, y: 490, width: 200 }, { x: 160, y: 570, width: 200 }, { x: 100, y: 640, width: 200 }, { x: 20, y: 690, width: 200 }, { x: -70, y: 720, width: 200 }, { x: -160, y: 730, width: 200 }, { x: -250, y: 720, width: 200 }, { x: -330, y: 680, width: 200 }, { x: -400, y: 620, width: 200 }, { x: -450, y: 550, width: 200 }, { x: -480, y: 470, width: 200 }, { x: -490, y: 380, width: 200 }, { x: -480, y: 290, width: 200 }, { x: -450, y: 210, width: 200 }, { x: -400, y: 140, width: 200 }, { x: -330, y: 80, width: 200 }, { x: -250, y: 40, width: 200 }, { x: -160, y: 20, width: 200 }, { x: -70, y: 10, width: 200 }, { x: 20, y: 10, width: 200 }, { x: 100, y: 20, width: 200 }, { x: 160, y: 40, width: 200 }, { x: 200, y: 80, width: 200 }, { x: 220, y: 140, width: 200 }, { x: 0, y: 0, width: 200 }
         ],
@@ -329,7 +329,7 @@ window.TRACKS = [
     {
         id: 'austin',
         name: 'COTA',
-        laps: 5,
+        laps: 25,
         waypoints: [
             { x: 0, y: 0, width: 220 }, { x: 100, y: 50, width: 210 }, { x: 200, y: 120, width: 200 }, { x: 280, y: 210, width: 190 }, { x: 340, y: 310, width: 180 }, { x: 380, y: 420, width: 170 }, { x: 400, y: 530, width: 160 }, { x: 390, y: 640, width: 160 }, { x: 350, y: 730, width: 170 }, { x: 280, y: 800, width: 180 }, { x: 190, y: 840, width: 190 }, { x: 90, y: 850, width: 200 }, { x: -10, y: 830, width: 200 }, { x: -100, y: 780, width: 200 }, { x: -170, y: 710, width: 200 }, { x: -220, y: 620, width: 200 }, { x: -240, y: 520, width: 200 }, { x: -230, y: 420, width: 200 }, { x: -190, y: 330, width: 200 }, { x: -120, y: 260, width: 200 }, { x: -30, y: 210, width: 200 }, { x: 70, y: 180, width: 200 }, { x: 170, y: 170, width: 200 }, { x: 270, y: 180, width: 200 }, { x: 360, y: 210, width: 200 }, { x: 440, y: 260, width: 200 }, { x: 500, y: 330, width: 200 }, { x: 540, y: 410, width: 200 }, { x: 560, y: 500, width: 200 }, { x: 560, y: 590, width: 200 }, { x: 540, y: 680, width: 200 }, { x: 500, y: 760, width: 200 }, { x: 440, y: 830, width: 200 }, { x: 360, y: 880, width: 200 }, { x: 270, y: 910, width: 200 }, { x: 170, y: 920, width: 200 }, { x: 70, y: 910, width: 200 }, { x: -20, y: 880, width: 200 }, { x: -100, y: 830, width: 200 }, { x: -160, y: 760, width: 200 }, { x: -200, y: 680, width: 200 }, { x: -220, y: 590, width: 200 }, { x: -220, y: 500, width: 200 }, { x: -200, y: 410, width: 200 }, { x: -160, y: 330, width: 200 }, { x: -100, y: 260, width: 200 }, { x: -20, y: 210, width: 200 }, { x: 70, y: 180, width: 200 }, { x: 0, y: 0, width: 220 }
         ],
@@ -408,7 +408,7 @@ window.loadTracksFromGeoJSON = async (callback) => {
                         id: calendarEntry.name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
                         name: calendarEntry.name,
                         location: location || name,
-                        laps: 5, // Default
+                        laps: 25, // Default race length
                         waypoints: waypoints,
                         racingLine: racingLine,
                         order: calendar2026.indexOf(calendarEntry)
@@ -426,7 +426,7 @@ window.loadTracksFromGeoJSON = async (callback) => {
                     id: entry.name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
                     name: entry.name + ' (Preview)',
                     location: 'TBD',
-                    laps: 5,
+                    laps: 25,
                     waypoints: generatePlaceholderTrack(),
                     racingLine: new Array(100).fill(0),
                     order: index

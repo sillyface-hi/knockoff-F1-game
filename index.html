@@ -46,6 +46,16 @@
                 </div>
             </div>
 
+            <!-- Tyre Selection -->
+            <div id="tyre-selection" class="screen hidden">
+                <div class="menu-content">
+                    <h2>SELECT TYRE COMPOUND</h2>
+                    <div id="tyre-list" class="tyre-grid">
+                        <!-- Tyres injected by JS -->
+                    </div>
+                </div>
+            </div>
+
             <!-- HUD -->
             <div id="hud" class="screen hidden">
                 <!-- Start Lights (F1 style: 5 red lights) -->
@@ -77,6 +87,9 @@
                         <div class="tire-weather">
                             <div id="weather-icon" class="weather-sunny"></div>
                             <div id="tire-icon" class="tire-soft">S</div>
+                            <div id="tire-wear-bar">
+                                <div id="tire-wear-fill"></div>
+                            </div>
                         </div>
                     </div>
                 </div>

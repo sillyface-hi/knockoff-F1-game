@@ -9,7 +9,7 @@ class Game {
         this.input = new InputHandler();
 
         // Game state
-        this.state = 'MENU'; // MENU, TRACK_SELECT, RACE, FINISHED
+        this.state = 'MENU'; // MENU, TRACK_SELECT, DRIVER_SELECT, TYRE_SELECT, RACE, FINISHED
         this.camera = { x: 0, y: 0 };
         this.lastTime = 0;
 
@@ -18,6 +18,7 @@ class Game {
         this.cars = [];
         this.player = null;
         this.selectedDriverId = null;
+        this.selectedTire = 'SOFT';
 
         // Minimap
         this.minimap = null;
@@ -145,9 +146,55 @@ class Game {
                 card.addEventListener('click', () => {
                     this.selectedDriverId = driver.id;
                     if (window.MenuSound) MenuSound.playClick();
-                    this.startGame();
+                    this.showTyreSelection();
                 });
                 driverList.appendChild(card);
+            });
+        }
+    }
+
+    showTyreSelection() {
+        const driverSelect = document.getElementById('driver-selection');
+        const tyreSelect = document.getElementById('tyre-selection');
+
+        if (driverSelect) {
+            driverSelect.classList.remove('active');
+            driverSelect.classList.add('hidden');
+        }
+        if (tyreSelect) {
+            tyreSelect.classList.remove('hidden');
+            tyreSelect.classList.add('active');
+            this.state = 'TYRE_SELECT';
+        }
+
+        const tyreList = document.getElementById('tyre-list');
+        if (tyreList) {
+            tyreList.innerHTML = '';
+
+            const tyres = [
+                { id: 'SOFT', label: 'Soft', colorClass: 'tire-soft', description: 'Fastest, most grip, wears quickly', short: 'S' },
+                { id: 'MEDIUM', label: 'Medium', colorClass: 'tire-medium', description: 'Balanced pace and durability', short: 'M' },
+                { id: 'HARD', label: 'Hard', colorClass: 'tire-hard', description: 'Slower, high durability', short: 'H' },
+                { id: 'INTER', label: 'Intermediate', colorClass: 'tire-inter', description: 'For light rain / damp track', short: 'I' },
+                { id: 'WET', label: 'Wet', colorClass: 'tire-wet', description: 'For heavy rain conditions', short: 'W' }
+            ];
+
+            tyres.forEach(tire => {
+                const card = document.createElement('div');
+                card.className = 'tyre-card';
+                card.innerHTML = `
+                    <div class="tyre-circle ${tire.colorClass}">${tire.short}</div>
+                    <div class="tyre-info">
+                        <div class="tyre-label">${tire.label}</div>
+                        <div class="tyre-description">${tire.description}</div>
+                    </div>
+                `;
+                card.addEventListener('click', () => {
+                    this.selectedTire = tire.id;
+                    if (window.MenuSound) MenuSound.playClick();
+                    this.startGame();
+                });
+                tyreList.appendChild(card);
             });
         }
     }
@@ -155,6 +202,7 @@ class Game {
     startGame() {
         const trackSelect = document.getElementById('track-selection');
         const driverSelect = document.getElementById('driver-selection');
+        const tyreSelect = document.getElementById('tyre-selection');
         const hud = document.getElementById('hud');
         if (trackSelect) {
             trackSelect.classList.remove('active');
@@ -163,6 +211,10 @@ class Game {
         if (driverSelect) {
             driverSelect.classList.remove('active');
             driverSelect.classList.add('hidden');
+        }
+        if (tyreSelect) {
+            tyreSelect.classList.remove('active');
+            tyreSelect.classList.add('hidden');
         }
         if (hud) {
             hud.classList.remove('hidden');
@@ -254,12 +306,14 @@ class Game {
             car.driverName = driver.name;
             car.driverNumber = driver.driverNumber;
             car.teamId = driver.teamId;
-            car.tire = 'SOFT';
+            // Player gets the selected tire; AI get a simple random strategy
             if (isPlayer) {
+                car.tire = this.selectedTire || 'SOFT';
                 this.player = car;
             } else {
                 car.ai = new AI(car, this.track);
-                car.tire = Math.random() > 0.5 ? 'SOFT' : 'HARD';
+                const aiTyres = ['SOFT', 'MEDIUM', 'HARD', 'INTER', 'WET'];
+                car.tire = aiTyres[Math.floor(Math.random() * aiTyres.length)];
             }
             this.cars.push(car);
         });
@@ -347,6 +401,23 @@ class Game {
 
                 if (crossedStartForward) {
                     car.lap++;
+
+                    // Tyre wear per lap based on compound
+                    if (!car.tireWear) car.tireWear = 0;
+                    if (!car.tireLifeLaps) {
+                        const tire = car.tire || 'SOFT';
+                        let min = 10, max = 10;
+                        if (tire === 'SOFT') { min = 2; max = 4; }
+                        else if (tire === 'MEDIUM') { min = 6; max = 9; }
+                        else if (tire === 'HARD') { min = 9; max = 11; }
+                        else if (tire === 'INTER') { min = 3; max = 5; }
+                        else if (tire === 'WET') { min = 7; max = 13; }
+                        car.tireLifeLaps = min + Math.random() * (max - min);
+                    }
+                    if (car.tireLifeLaps > 0) {
+                        const wearDelta = 1 / car.tireLifeLaps;
+                        car.tireWear = Math.min(1, car.tireWear + wearDelta);
+                    }
 
                     // Player-specific timing and race end logic
                     if (car === this.player) {
@@ -448,6 +519,12 @@ class Game {
         if (tireIcon) {
             tireIcon.className = `tire-${this.player.tire.toLowerCase()}`;
             tireIcon.innerText = this.player.tire[0];
+        }
+        const tireWearFill = document.getElementById('tire-wear-fill');
+        if (tireWearFill) {
+            const wear = this.player.tireWear || 0; // 0 fresh, 1 worn
+            const remaining = Math.max(0, Math.min(1, 1 - wear));
+            tireWearFill.style.height = `${remaining * 100}%`;
         }
 
         // Update start lights UI

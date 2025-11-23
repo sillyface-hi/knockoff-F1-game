@@ -200,12 +200,21 @@ class Track {
 
     // Helper to get spawn position on grid
     getGridPosition(index) {
-        // Approx. one car length between rows (cars are ~40px long)
-        const rowSpacing = 50;
-        const colSpacing = 30;
+        // Staggered starting grid:
+        // - about one car length between rows
+        // - slight offset between left/right cars so the grid looks more scattered
+        const carLength = 40; // matches Car.height
+        const rowSpacing = carLength * 1.4; // ~56px between rows
+        const colSpacing = 26; // lateral separation between columns
+
         const row = Math.floor(index / 2);
         const col = index % 2 === 0 ? -1 : 1; // Left or Right side
-        let distBack = 200 + row * rowSpacing;
+
+        // Base distance back from the start/finish line for the first row
+        const baseBack = 180;
+        // Stagger the right-hand car in each row slightly further back
+        const stagger = col === 1 ? carLength * 0.5 : 0; // ~half a car length
+        let distBack = baseBack + row * rowSpacing + stagger;
         // Walk backwards from start node
         let currentWpIdx = 0;
         let prevWpIdx = this.waypoints.length - 2; // last before duplicate start

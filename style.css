@@ -225,6 +225,66 @@ h1 {
     opacity: 0.9;
 }
 
+/* Tyre Selection */
+.tyre-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin-top: 30px;
+    width: 100%;
+    max-width: 700px;
+    max-height: 50vh;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.tyre-card {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 14px 18px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.tyre-card:hover {
+    background: rgba(255, 40, 0, 0.2);
+    border-color: #ff2800;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+}
+
+.tyre-circle {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: 3px solid #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: #000;
+}
+
+.tyre-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.tyre-label {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.tyre-description {
+    font-size: 0.85rem;
+    opacity: 0.75;
+}
+
 /* HUD */
 #hud {
     background: none;
@@ -368,7 +428,6 @@ h1 {
     width: 50px;
     height: 50px;
     border-radius: 50%;
-    background: #ff3333;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -395,6 +454,24 @@ h1 {
 
 .tire-wet {
     background: #0066ff;
+}
+
+/* Tyre wear bar */
+#tire-wear-bar {
+    width: 10px;
+    height: 50px;
+    border-radius: 4px;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column-reverse;
+    background: rgba(0, 0, 0, 0.6);
+}
+
+#tire-wear-fill {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to top, #00ff66, #ffcc00, #ff3333);
 }
 
 #weather-icon {
