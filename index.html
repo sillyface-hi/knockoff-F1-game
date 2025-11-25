@@ -21,9 +21,9 @@
             <div id="main-menu" class="screen active">
                 <h1>F1 2026 <span class="accent">RACING</span></h1>
                 <div class="menu-options">
-                    <button id="start-btn" class="btn-primary">START GAME</button>
+                    <button id="race-btn" class="btn-primary">RACE</button>
+                    <button id="time-trials-btn" class="btn-primary">TIME TRIALS</button>
                 </div>
-                <div class="credits">2026 SEASON • 11 TEAMS • 24 TRACKS</div>
             </div>
 
             <!-- Track Selection -->
@@ -94,10 +94,13 @@
                     </div>
                 </div>
 
-                <!-- Lap Time (Bottom Left) -->
-                <div class="hud-bottom-left">
-                    <div class="lap-time-box">
-                        <span class="label">LAP TIME</span>
+                <!-- Lap Times Panel (Bottom Left) -->
+                <div id="lap-times-panel" class="lap-times-panel">
+                    <div id="lap-history" class="lap-history">
+                        <!-- Last 5 lap times will be injected here -->
+                    </div>
+                    <div class="current-lap">
+                        <span class="label">CURRENT</span>
                         <span id="lap-time-display" class="lap-time-value">00:00.000</span>
                     </div>
                 </div>

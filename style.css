@@ -111,6 +111,13 @@ h1 {
     background: #444;
 }
 
+.menu-options {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
 .credits {
     margin-top: 2rem;
     font-size: 0.9rem;
@@ -330,6 +337,9 @@ h1 {
     position: absolute;
     bottom: 2rem;
     left: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
 .lap-time-box {
@@ -345,9 +355,97 @@ h1 {
 .lap-time-value {
     font-size: 2.5rem;
     font-weight: 700;
-    font-family: 'Courier New', monospace;
-    letter-spacing: 2px;
-    color: var(--accent-color);
+    font-family: var(--font-main);
+    letter-spacing: 1px;
+    color: #22c55e; /* Green by default for time trials */
+}
+
+.best-lap-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    font-family: var(--font-main);
+    letter-spacing: 1px;
+    color: #a855f7; /* Purple for best lap */
+}
+
+/* Lap Times Panel */
+.lap-times-panel {
+    position: absolute;
+    bottom: 2rem;
+    left: 2rem;
+    width: 220px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.lap-history {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    border-bottom: 1px solid var(--glass-border);
+    padding-bottom: 0.5rem;
+    min-height: 1.5rem;
+}
+
+.lap-history:empty {
+    border-bottom: none;
+    padding-bottom: 0;
+    min-height: 0;
+}
+
+.lap-history-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--font-main);
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+.lap-history-row .lap-num {
+    opacity: 0.6;
+    font-size: 0.9rem;
+    min-width: 50px;
+}
+
+.lap-history-row .lap-time {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.lap-history-row.best .lap-time {
+    color: #a855f7; /* Purple for best */
+}
+
+.lap-history-row.invalid .lap-time {
+    color: #ef4444; /* Red for invalid/track limits */
+}
+
+.lap-history-row:not(.best):not(.invalid) .lap-time {
+    color: #fbbf24; /* Yellow for non-best valid laps */
+}
+
+.current-lap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding-top: 0.25rem;
+}
+
+.current-lap .label {
+    font-size: 0.75rem;
+    opacity: 0.7;
+    margin-bottom: 0.25rem;
+}
+
+.current-lap .lap-time-value {
+    font-size: 2rem;
+    font-variant-numeric: tabular-nums;
 }
 
 .position-box,

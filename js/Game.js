@@ -19,6 +19,7 @@ class Game {
         this.player = null;
         this.selectedDriverId = null;
         this.selectedTire = 'SOFT';
+        this.gameMode = 'race'; // 'race' or 'time_trials'
 
         // Minimap
         this.minimap = null;
@@ -27,6 +28,7 @@ class Game {
         this.currentLapStartTime = null;
         this.currentLapTime = 0;
         this.bestLapTime = Infinity;
+        this.lapHistory = []; // Array of completed lap times
 
         // Debug flag – set to true in main.js if you want start‑line overlay
         this.debugStart = false;
@@ -58,10 +60,19 @@ class Game {
     // UI setup
     // ---------------------------------------------------------------------
     setupUI() {
-        const startBtn = document.getElementById('start-btn');
-        if (startBtn) {
-            startBtn.addEventListener('click', () => {
+        const raceBtn = document.getElementById('race-btn');
+        if (raceBtn) {
+            raceBtn.addEventListener('click', () => {
                 if (window.MenuSound) MenuSound.playClick();
+                this.gameMode = 'race';
+                this.showTrackSelection();
+            });
+        }
+        const timeTrialsBtn = document.getElementById('time-trials-btn');
+        if (timeTrialsBtn) {
+            timeTrialsBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.gameMode = 'time_trials';
                 this.showTrackSelection();
             });
         }
@@ -92,7 +103,12 @@ class Game {
             window.TRACKS.forEach(track => {
                 const card = document.createElement('div');
                 card.className = 'track-card';
-                card.innerHTML = `<h3>${track.name}</h3><p>${track.laps} Laps</p>`;
+                // In time trials, don't show lap count
+                if (this.gameMode === 'time_trials') {
+                    card.innerHTML = `<h3>${track.name}</h3>`;
+                } else {
+                    card.innerHTML = `<h3>${track.name}</h3><p>${track.laps} Laps</p>`;
+                }
                 card.addEventListener('click', () => this.loadTrack(track));
                 trackList.appendChild(card);
             });
@@ -146,7 +162,13 @@ class Game {
                 card.addEventListener('click', () => {
                     this.selectedDriverId = driver.id;
                     if (window.MenuSound) MenuSound.playClick();
-                    this.showTyreSelection();
+                    // In time trials, skip tire selection and use soft tires
+                    if (this.gameMode === 'time_trials') {
+                        this.selectedTire = 'SOFT';
+                        this.startGame();
+                    } else {
+                        this.showTyreSelection();
+                    }
                 });
                 driverList.appendChild(card);
             });
@@ -255,6 +277,10 @@ class Game {
         this.currentLapStartTime = null;
         this.currentLapTime = 0;
         this.bestLapTime = Infinity;
+        this.lastLapWasPB = false; // Track if last completed lap was a personal best
+        this.lapHistory = []; // Reset lap history
+        this.currentLapInvalid = false; // Track if current lap exceeded track limits
+        this.offTrackTime = 0; // Cumulative time spent off track this lap (ms)
         // Switch to race state
         this.state = 'RACE';
         this.lastTime = performance.now();
@@ -297,7 +323,22 @@ class Game {
             }
         }
 
-        // Create car objects
+        // In time trials mode, only create the player car
+        if (this.gameMode === 'time_trials') {
+            const playerDriver = allDrivers[playerIndex];
+            const startPos = this.track.getGridPosition(0); // Pole position for time trials
+            const car = new Car(startPos.x, startPos.y, playerDriver.teamColor, true);
+            car.angle = startPos.angle;
+            car.driverName = playerDriver.name;
+            car.driverNumber = playerDriver.driverNumber;
+            car.teamId = playerDriver.teamId;
+            car.tire = this.selectedTire || 'SOFT';
+            this.player = car;
+            this.cars.push(car);
+            return;
+        }
+
+        // Create car objects (race mode with AI)
         allDrivers.forEach((driver, i) => {
             const startPos = this.track.getGridPosition(i);
             const isPlayer = i === playerIndex;
@@ -373,6 +414,18 @@ class Game {
                 const raceActive = this.raceStarted;
                 car.update(this.input, deltaTime, this.track, this.cars, this.weather, raceActive);
             });
+            
+            // Check track limits for time trials
+            if (this.gameMode === 'time_trials' && this.player && this.track && this.raceStarted) {
+                if (!this.track.isOnTrack(this.player.x, this.player.y)) {
+                    this.offTrackTime += deltaTime;
+                    // Invalidate lap if off track for more than 0.5 seconds
+                    if (this.offTrackTime >= 500) {
+                        this.currentLapInvalid = true;
+                    }
+                }
+            }
+            
             if (this.player) {
                 this.camera.x = this.player.x - this.width / 2;
                 this.camera.y = this.player.y - this.height / 2;
@@ -402,33 +455,51 @@ class Game {
                 if (crossedStartForward) {
                     car.lap++;
 
-                    // Tyre wear per lap based on compound
-                    if (!car.tireWear) car.tireWear = 0;
-                    if (!car.tireLifeLaps) {
-                        const tire = car.tire || 'SOFT';
-                        let min = 10, max = 10;
-                        if (tire === 'SOFT') { min = 2; max = 4; }
-                        else if (tire === 'MEDIUM') { min = 6; max = 9; }
-                        else if (tire === 'HARD') { min = 9; max = 11; }
-                        else if (tire === 'INTER') { min = 3; max = 5; }
-                        else if (tire === 'WET') { min = 7; max = 13; }
-                        car.tireLifeLaps = min + Math.random() * (max - min);
-                    }
-                    if (car.tireLifeLaps > 0) {
-                        const wearDelta = 1 / car.tireLifeLaps;
-                        car.tireWear = Math.min(1, car.tireWear + wearDelta);
+                    // Tyre wear per lap based on compound (skip in time trials)
+                    if (this.gameMode !== 'time_trials') {
+                        if (!car.tireWear) car.tireWear = 0;
+                        if (!car.tireLifeLaps) {
+                            const tire = car.tire || 'SOFT';
+                            let min = 10, max = 10;
+                            if (tire === 'SOFT') { min = 2; max = 4; }
+                            else if (tire === 'MEDIUM') { min = 6; max = 9; }
+                            else if (tire === 'HARD') { min = 9; max = 11; }
+                            else if (tire === 'INTER') { min = 3; max = 5; }
+                            else if (tire === 'WET') { min = 7; max = 13; }
+                            car.tireLifeLaps = min + Math.random() * (max - min);
+                        }
+                        if (car.tireLifeLaps > 0) {
+                            const wearDelta = 1 / car.tireLifeLaps;
+                            car.tireWear = Math.min(1, car.tireWear + wearDelta);
+                        }
                     }
 
                     // Player-specific timing and race end logic
                     if (car === this.player) {
                         if (this.currentLapStartTime !== null && this.player.lap > 1) {
                             this.currentLapTime = Date.now() - this.currentLapStartTime;
-                            if (this.currentLapTime < this.bestLapTime) {
+                            const lapWasInvalid = this.currentLapInvalid;
+                            
+                            // Store completed lap in history
+                            this.lapHistory.push({
+                                lapNum: this.player.lap - 1,
+                                time: this.currentLapTime,
+                                invalid: lapWasInvalid
+                            });
+                            
+                            // Only update best time if lap was valid
+                            if (!lapWasInvalid && this.currentLapTime < this.bestLapTime) {
                                 this.bestLapTime = this.currentLapTime;
+                                this.lastLapWasPB = true;
+                            } else {
+                                this.lastLapWasPB = false;
                             }
                         }
                         this.currentLapStartTime = Date.now();
-                        if (this.player.lap > this.track.laps) {
+                        this.currentLapInvalid = false; // Reset for new lap
+                        this.offTrackTime = 0; // Reset off-track time for new lap
+                        // Only end race in race mode, time trials are unlimited
+                        if (this.gameMode !== 'time_trials' && this.player.lap > this.track.laps) {
                             this.endRace();
                         }
                     }
@@ -460,19 +531,47 @@ class Game {
         if (resultsScreen) {
             resultsScreen.classList.remove('hidden');
             resultsScreen.classList.add('active');
+            
+            // Update the heading based on game mode
+            const heading = resultsScreen.querySelector('h2');
+            if (heading) {
+                heading.textContent = this.gameMode === 'time_trials' ? 'TIME TRIAL COMPLETE' : 'RACE FINISHED';
+            }
+            
             const list = document.getElementById('results-list');
             list.innerHTML = '';
-            this.cars.slice(0, 10).forEach((car, i) => {
+            
+            if (this.gameMode === 'time_trials') {
+                // Show best lap time for time trials
                 const row = document.createElement('div');
                 row.className = 'result-row';
+                const bestTime = this.bestLapTime === Infinity ? '--:--.---' : this.formatTime(this.bestLapTime);
                 row.innerHTML = `
-                    <span class="pos">${i + 1}</span>
-                    <span class="name">${car.driverName}</span>
-                    <span class="team" style="color:${car.color}">■</span>
+                    <span class="name">Best Lap Time</span>
+                    <span class="time" style="color: var(--accent-color); font-weight: 700;">${bestTime}</span>
                 `;
                 list.appendChild(row);
-            });
+            } else {
+                // Show race positions
+                this.cars.slice(0, 10).forEach((car, i) => {
+                    const row = document.createElement('div');
+                    row.className = 'result-row';
+                    row.innerHTML = `
+                        <span class="pos">${i + 1}</span>
+                        <span class="name">${car.driverName}</span>
+                        <span class="team" style="color:${car.color}">■</span>
+                    `;
+                    list.appendChild(row);
+                });
+            }
         }
+    }
+    
+    formatTime(ms) {
+        const m = Math.floor(ms / 60000);
+        const s = Math.floor((ms % 60000) / 1000);
+        const millis = Math.floor(ms % 1000);
+        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${millis.toString().padStart(3, '0')}`;
     }
 
     // ---------------------------------------------------------------------
@@ -481,10 +580,24 @@ class Game {
     updateHUD() {
         this.checkLaps();
         const posDisplay = document.getElementById('pos-display');
-        if (posDisplay) posDisplay.innerHTML = `${this.player.position}<span class="total">/22</span>`;
+        const posBox = document.querySelector('.position-box');
         const lapDisplay = document.getElementById('lap-display');
-        if (lapDisplay) {
-            lapDisplay.innerHTML = `${Math.min(this.player.lap, this.track.laps)}<span class="total">/${this.track.laps}</span>`;
+        const lapBox = document.querySelector('.lap-box');
+        
+        if (this.gameMode === 'time_trials') {
+            // Hide position and lap count in time trials
+            if (posBox) posBox.style.display = 'none';
+            if (lapBox) lapBox.style.display = 'none';
+        } else {
+            if (posBox) posBox.style.display = '';
+            if (posDisplay) {
+                const totalCars = this.cars.length;
+                posDisplay.innerHTML = `${this.player.position}<span class="total">/${totalCars}</span>`;
+            }
+            if (lapBox) lapBox.style.display = '';
+            if (lapDisplay) {
+                lapDisplay.innerHTML = `${Math.min(this.player.lap, this.track.laps)}<span class="total">/${this.track.laps}</span>`;
+            }
         }
         const speedDisplay = document.getElementById('speed-display');
         if (speedDisplay) {
@@ -515,16 +628,23 @@ class Game {
                 this.engineSound.setState(this.player.speed, g, throttlePressed);
             }
         }
-        const tireIcon = document.getElementById('tire-icon');
-        if (tireIcon) {
-            tireIcon.className = `tire-${this.player.tire.toLowerCase()}`;
-            tireIcon.innerText = this.player.tire[0];
-        }
-        const tireWearFill = document.getElementById('tire-wear-fill');
-        if (tireWearFill) {
-            const wear = this.player.tireWear || 0; // 0 fresh, 1 worn
-            const remaining = Math.max(0, Math.min(1, 1 - wear));
-            tireWearFill.style.height = `${remaining * 100}%`;
+        const tireWeather = document.querySelector('.tire-weather');
+        if (this.gameMode === 'time_trials') {
+            // Hide tire display in time trials (no tire wear)
+            if (tireWeather) tireWeather.style.display = 'none';
+        } else {
+            if (tireWeather) tireWeather.style.display = '';
+            const tireIcon = document.getElementById('tire-icon');
+            if (tireIcon) {
+                tireIcon.className = `tire-${this.player.tire.toLowerCase()}`;
+                tireIcon.innerText = this.player.tire[0];
+            }
+            const tireWearFill = document.getElementById('tire-wear-fill');
+            if (tireWearFill) {
+                const wear = this.player.tireWear || 0; // 0 fresh, 1 worn
+                const remaining = Math.max(0, Math.min(1, 1 - wear));
+                tireWearFill.style.height = `${remaining * 100}%`;
+            }
         }
 
         // Update start lights UI
@@ -547,12 +667,85 @@ class Game {
         }
         // Lap timer display
         const lapTimeDisplay = document.getElementById('lap-time-display');
-        if (lapTimeDisplay && this.currentLapStartTime !== null) {
-            const elapsed = Date.now() - this.currentLapStartTime;
-            const m = Math.floor(elapsed / 60000);
-            const s = Math.floor((elapsed % 60000) / 1000);
-            const ms = Math.floor(elapsed % 1000);
-            lapTimeDisplay.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+        const lapTimesPanel = document.getElementById('lap-times-panel');
+        
+        if (this.gameMode === 'time_trials') {
+            // Show the lap times panel in time trials
+            if (lapTimesPanel) lapTimesPanel.style.display = '';
+            
+            // Update current lap time - green when valid, red when invalid
+            if (lapTimeDisplay && this.currentLapStartTime !== null) {
+                const elapsed = Date.now() - this.currentLapStartTime;
+                lapTimeDisplay.textContent = this.formatTime(elapsed);
+                lapTimeDisplay.style.color = this.currentLapInvalid ? '#ef4444' : '#22c55e'; // red or green
+            }
+            
+            // Update lap history display with sticky best lap
+            const lapHistoryEl = document.getElementById('lap-history');
+            if (lapHistoryEl && this.lapHistory.length > 0) {
+                // Find the best lap (only valid laps can be best)
+                const bestLap = this.lapHistory.find(lap => !lap.invalid && lap.time === this.bestLapTime);
+                
+                // Get recent 4 laps excluding the best lap
+                const recentLaps = this.lapHistory
+                    .filter(lap => lap !== bestLap)
+                    .slice(-4);
+                
+                // Combine best lap (sticky) with recent laps, then sort by lap number
+                const displayLaps = [];
+                if (bestLap) displayLaps.push(bestLap);
+                displayLaps.push(...recentLaps);
+                displayLaps.sort((a, b) => a.lapNum - b.lapNum);
+                
+                lapHistoryEl.innerHTML = displayLaps.map(lap => {
+                    const isBest = !lap.invalid && lap.time === this.bestLapTime;
+                    const rowClass = lap.invalid ? 'invalid' : (isBest ? 'best' : '');
+                    return `
+                        <div class="lap-history-row ${rowClass}">
+                            <span class="lap-num">LAP ${lap.lapNum}</span>
+                            <span class="lap-time">${this.formatTime(lap.time)}</span>
+                        </div>
+                    `;
+                }).join('');
+            }
+        } else {
+            // Show the lap times panel in race mode too
+            if (lapTimesPanel) lapTimesPanel.style.display = '';
+            
+            // Update current lap time (no track limits in race mode, use default color)
+            if (lapTimeDisplay && this.currentLapStartTime !== null) {
+                const elapsed = Date.now() - this.currentLapStartTime;
+                lapTimeDisplay.textContent = this.formatTime(elapsed);
+                lapTimeDisplay.style.color = ''; // Default green from CSS
+            }
+            
+            // Update lap history display with sticky best lap
+            const lapHistoryEl = document.getElementById('lap-history');
+            if (lapHistoryEl && this.lapHistory.length > 0) {
+                // Find the best lap
+                const bestLap = this.lapHistory.find(lap => lap.time === this.bestLapTime);
+                
+                // Get recent 4 laps excluding the best lap
+                const recentLaps = this.lapHistory
+                    .filter(lap => lap !== bestLap)
+                    .slice(-4);
+                
+                // Combine best lap (sticky) with recent laps, then sort by lap number
+                const displayLaps = [];
+                if (bestLap) displayLaps.push(bestLap);
+                displayLaps.push(...recentLaps);
+                displayLaps.sort((a, b) => a.lapNum - b.lapNum);
+                
+                lapHistoryEl.innerHTML = displayLaps.map(lap => {
+                    const isBest = lap.time === this.bestLapTime;
+                    return `
+                        <div class="lap-history-row ${isBest ? 'best' : ''}">
+                            <span class="lap-num">LAP ${lap.lapNum}</span>
+                            <span class="lap-time">${this.formatTime(lap.time)}</span>
+                        </div>
+                    `;
+                }).join('');
+            }
         }
     }
 
