@@ -80,9 +80,127 @@ class Game {
         if (restartBtn) {
             restartBtn.addEventListener('click', () => {
                 if (window.MenuSound) MenuSound.playClick();
-                this.resetGame();
+                this.goToMainMenu();
             });
         }
+
+        // Back / main menu buttons for selection screens
+        const trackBackBtn = document.getElementById('track-back-btn');
+        if (trackBackBtn) {
+            trackBackBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.backFromTrack();
+            });
+        }
+        const trackMainBtn = document.getElementById('track-main-btn');
+        if (trackMainBtn) {
+            trackMainBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.goToMainMenu();
+            });
+        }
+
+        const driverBackBtn = document.getElementById('driver-back-btn');
+        if (driverBackBtn) {
+            driverBackBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.backFromDriver();
+            });
+        }
+        const driverMainBtn = document.getElementById('driver-main-btn');
+        if (driverMainBtn) {
+            driverMainBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.goToMainMenu();
+            });
+        }
+
+        const tyreBackBtn = document.getElementById('tyre-back-btn');
+        if (tyreBackBtn) {
+            tyreBackBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.backFromTyre();
+            });
+        }
+        const tyreMainBtn = document.getElementById('tyre-main-btn');
+        if (tyreMainBtn) {
+            tyreMainBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.goToMainMenu();
+            });
+        }
+    }
+
+    backFromTrack() {
+        const menu = document.getElementById('main-menu');
+        const trackSelect = document.getElementById('track-selection');
+        if (trackSelect) {
+            trackSelect.classList.remove('active');
+            trackSelect.classList.add('hidden');
+        }
+        if (menu) {
+            menu.classList.remove('hidden');
+            menu.classList.add('active');
+        }
+        this.state = 'MENU';
+        this.track = null;
+    }
+
+    backFromDriver() {
+        const trackSelect = document.getElementById('track-selection');
+        const driverSelect = document.getElementById('driver-selection');
+        if (driverSelect) {
+            driverSelect.classList.remove('active');
+            driverSelect.classList.add('hidden');
+        }
+        if (trackSelect) {
+            trackSelect.classList.remove('hidden');
+            trackSelect.classList.add('active');
+        }
+        this.state = 'TRACK_SELECT';
+        this.selectedDriverId = null;
+    }
+
+    backFromTyre() {
+        const driverSelect = document.getElementById('driver-selection');
+        const tyreSelect = document.getElementById('tyre-selection');
+        if (tyreSelect) {
+            tyreSelect.classList.remove('active');
+            tyreSelect.classList.add('hidden');
+        }
+        if (driverSelect) {
+            driverSelect.classList.remove('hidden');
+            driverSelect.classList.add('active');
+        }
+        this.state = 'DRIVER_SELECT';
+        this.selectedTire = 'SOFT';
+    }
+
+    goToMainMenu() {
+        const menu = document.getElementById('main-menu');
+        const trackSelect = document.getElementById('track-selection');
+        const driverSelect = document.getElementById('driver-selection');
+        const tyreSelect = document.getElementById('tyre-selection');
+        const hud = document.getElementById('hud');
+        const results = document.getElementById('results-screen');
+
+        [trackSelect, driverSelect, tyreSelect, hud, results].forEach(el => {
+            if (!el) return;
+            el.classList.remove('active');
+            el.classList.add('hidden');
+        });
+        if (menu) {
+            menu.classList.remove('hidden');
+            menu.classList.add('active');
+        }
+
+        // Reset basic game state
+        this.state = 'MENU';
+        this.track = null;
+        this.cars = [];
+        this.player = null;
+        this.selectedDriverId = null;
+        this.selectedTire = 'SOFT';
     }
 
     showTrackSelection() {
@@ -447,6 +565,19 @@ class Game {
             car.progress = prog.distance;
             const norm = prog.normalized; // 0–1 around loop
 
+            // Initialise tyre life once, based on compound
+            if (car.tireLifeLaps == null) {
+                const tire = car.tire || 'SOFT';
+                let min = 10, max = 10;
+                if (tire === 'SOFT') { min = 2; max = 4; }
+                else if (tire === 'MEDIUM') { min = 6; max = 9; }
+                else if (tire === 'HARD') { min = 9; max = 11; }
+                else if (tire === 'INTER') { min = 3; max = 5; }
+                else if (tire === 'WET') { min = 7; max = 13; }
+                car.tireLifeLaps = min + Math.random() * (max - min);
+            }
+            if (car.tireWear == null) car.tireWear = 0;
+
             // Detect wrap from end-of-lap to start-of-lap to count a new lap
             if (car.lastProgressNorm !== null) {
                 const prev = car.lastProgressNorm;
@@ -503,6 +634,20 @@ class Game {
                             this.endRace();
                         }
                     }
+                }
+            }
+
+            // Continuous tyre wear based on distance travelled along the track
+            if (car.lastProgressNorm !== null && car.tireLifeLaps > 0 && this.track.totalLength) {
+                let deltaNorm = norm - car.lastProgressNorm;
+                // Handle wrap-around; ignore backwards movement
+                if (deltaNorm < -0.5) deltaNorm += 1; // crossed 1 → 0
+                if (deltaNorm < 0) deltaNorm = 0;
+                const distanceDelta = deltaNorm * this.track.totalLength;
+                const fullLifeDistance = this.track.totalLength * car.tireLifeLaps;
+                if (fullLifeDistance > 0 && distanceDelta > 0) {
+                    const wearDelta = distanceDelta / fullLifeDistance;
+                    car.tireWear = Math.min(1, car.tireWear + wearDelta);
                 }
             }
 

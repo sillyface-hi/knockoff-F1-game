@@ -148,7 +148,16 @@ class Car {
         ctx.rotate(this.angle);
 
         // Car Body Color
-        ctx.fillStyle = this.color;
+        let bodyColor = this.color;
+        // Special liveries:
+        // - Alpine: pink body
+        // - Racing Bulls (rb): white body
+        if (this.teamId === 'alpine') {
+            bodyColor = '#ff66cc'; // pink
+        } else if (this.teamId === 'rb') {
+            bodyColor = '#ffffff';
+        }
+        ctx.fillStyle = bodyColor;
 
         // Dimensions
         const w = this.width;
@@ -161,7 +170,17 @@ class Car {
         ctx.fillRect(-w / 2 + 2, -h / 2 + 10, w - 4, h - 15);
 
         // Nose Cone
-        ctx.fillStyle = (this.teamId === 'mclaren') ? '#000000' : '#FFFFFF'; // McLaren front in black
+        // Alpine nose blue, Racing Bulls nose red,
+        // McLaren/Cadillac/Aston Martin black, others white
+        if (this.teamId === 'alpine') {
+            ctx.fillStyle = '#0000ff'; // blue
+        } else if (this.teamId === 'rb') {
+            ctx.fillStyle = '#ff0000'; // red
+        } else if (this.teamId === 'mclaren' || this.teamId === 'cadillac' || this.teamId === 'astonmartin') {
+            ctx.fillStyle = '#000000';
+        } else {
+            ctx.fillStyle = '#FFFFFF';
+        }
         ctx.beginPath();
         ctx.moveTo(-w / 4, -h / 2 + 10);
         ctx.lineTo(0, -h / 2 - 5);
@@ -169,14 +188,39 @@ class Car {
         ctx.fill();
 
         // Front Wing
-        ctx.fillStyle = (this.teamId === 'mclaren') ? '#000000' : '#FFFFFF'; // McLaren front wing in black
+        // Special team styling:
+        // - Red Bull: red
+        // - Racing Bulls (rb): red
+        // - Alpine: blue
+        // - McLaren/Cadillac/Aston Martin: black
+        // - Others: white
+        if (this.teamId === 'redbull' || this.teamId === 'rb') {
+            ctx.fillStyle = '#ff0000'; // red
+        } else if (this.teamId === 'alpine') {
+            ctx.fillStyle = '#0000ff'; // blue
+        } else if (this.teamId === 'mclaren' || this.teamId === 'cadillac' || this.teamId === 'astonmartin') {
+            ctx.fillStyle = '#000000';
+        } else {
+            ctx.fillStyle = '#FFFFFF';
+        }
         ctx.fillRect(-w / 2 - 2, -h / 2 - 5, w + 4, 5);
 
         // Rear Wing
+        // Red Bull & Racing Bulls rear wing yellow, Alpine blue,
+        // McLaren/Cadillac/Aston Martin black, others white
+        if (this.teamId === 'redbull' || this.teamId === 'rb') {
+            ctx.fillStyle = '#ffff00'; // yellow
+        } else if (this.teamId === 'alpine') {
+            ctx.fillStyle = '#0000ff'; // blue
+        } else if (this.teamId === 'mclaren' || this.teamId === 'cadillac' || this.teamId === 'astonmartin') {
+            ctx.fillStyle = '#000000';
+        } else {
+            ctx.fillStyle = '#FFFFFF';
+        }
         ctx.fillRect(-w / 2 - 2, h / 2 - 5, w + 4, 5);
 
         // Sidepods
-        ctx.fillStyle = this.color;
+        ctx.fillStyle = bodyColor;
         ctx.fillRect(-w / 2, -h / 4, 4, h / 2); // Left
         ctx.fillRect(w / 2 - 4, -h / 4, 4, h / 2); // Right
 
