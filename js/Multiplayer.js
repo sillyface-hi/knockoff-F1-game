@@ -14,6 +14,25 @@ class Multiplayer {
         // Sync rate (send position updates at ~30fps)
         this.lastSendTime = 0;
         this.sendInterval = 33; // ~30fps
+        
+        // PeerJS server configs (try private first, fallback to public)
+        this.peerServers = [
+            {
+                name: 'private',
+                host: 'peerjs-5y63k.ondigitalocean.app',
+                port: 443,
+                secure: true,
+                path: '/'
+            },
+            {
+                name: 'public',
+                // Default PeerJS cloud server (no config needed)
+                host: '0.peerjs.com',
+                port: 443,
+                secure: true
+            }
+        ];
+        this.currentServerIndex = 0;
     }
 
     /**
@@ -29,21 +48,67 @@ class Multiplayer {
     }
 
     /**
+     * Get current server config
+     */
+    getServerConfig() {
+        return this.peerServers[this.currentServerIndex];
+    }
+
+    /**
+     * Try next server in the list
+     */
+    tryNextServer() {
+        this.currentServerIndex++;
+        return this.currentServerIndex < this.peerServers.length;
+    }
+
+    /**
+     * Reset to first server
+     */
+    resetServerIndex() {
+        this.currentServerIndex = 0;
+    }
+
+    /**
      * Create a room (host)
      */
     createRoom(onReady, onConnect, onError) {
         this.isHost = true;
         this.roomCode = this.generateRoomCode();
+        this.resetServerIndex();
         
-        console.log('[MP] Creating room with code:', this.roomCode);
+        this._createRoomWithServer(onReady, onConnect, onError);
+    }
+
+    /**
+     * Internal: Create room with current server, fallback on failure
+     */
+    _createRoomWithServer(onReady, onConnect, onError) {
+        const serverConfig = this.getServerConfig();
+        console.log('[MP] Creating room with code:', this.roomCode, 'using server:', serverConfig.name);
+        
+        // Clean up any existing peer
+        if (this.peer) {
+            this.peer.destroy();
+        }
         
         // Create peer with room code as ID
         this.peer = new Peer('f1race-' + this.roomCode, {
+            host: serverConfig.host,
+            port: serverConfig.port,
+            secure: serverConfig.secure,
+            path: serverConfig.path || '/',
             debug: 2
         });
 
+        const connectionTimeout = setTimeout(() => {
+            console.log('[MP] Connection timeout on server:', serverConfig.name);
+            this._handleServerFailure(onReady, onConnect, onError, 'timeout');
+        }, 5000);
+
         this.peer.on('open', (id) => {
-            console.log('[MP] Host peer opened with ID:', id);
+            clearTimeout(connectionTimeout);
+            console.log('[MP] Host peer opened with ID:', id, 'on server:', serverConfig.name);
             if (onReady) onReady(this.roomCode);
         });
 
@@ -54,8 +119,9 @@ class Multiplayer {
         });
 
         this.peer.on('error', (err) => {
-            console.error('[MP] Host peer error:', err);
-            if (onError) onError(err.type);
+            clearTimeout(connectionTimeout);
+            console.error('[MP] Host peer error on server:', serverConfig.name, err);
+            this._handleServerFailure(onReady, onConnect, onError, err.type);
         });
         
         this.peer.on('disconnected', () => {
@@ -64,21 +130,62 @@ class Multiplayer {
     }
 
     /**
+     * Handle server failure and try fallback
+     */
+    _handleServerFailure(onReady, onConnect, onError, errorType) {
+        if (this.tryNextServer()) {
+            const nextServer = this.getServerConfig();
+            console.log('[MP] Trying fallback server:', nextServer.name);
+            if (this.isHost) {
+                this._createRoomWithServer(onReady, onConnect, onError);
+            } else {
+                this._joinRoomWithServer(onConnect, onError);
+            }
+        } else {
+            console.error('[MP] All servers failed');
+            if (onError) onError(errorType);
+        }
+    }
+
+    /**
      * Join a room (client)
      */
     joinRoom(roomCode, onConnect, onError) {
         this.isHost = false;
         this.roomCode = roomCode.toUpperCase();
+        this.resetServerIndex();
+        this._savedOnConnect = onConnect;
+        this._savedOnError = onError;
         
-        console.log('[MP] Joining room:', this.roomCode);
+        this._joinRoomWithServer(onConnect, onError);
+    }
+
+    /**
+     * Internal: Join room with current server, fallback on failure
+     */
+    _joinRoomWithServer(onConnect, onError) {
+        const serverConfig = this.getServerConfig();
+        console.log('[MP] Joining room:', this.roomCode, 'using server:', serverConfig.name);
+        
+        // Clean up any existing peer
+        if (this.peer) {
+            this.peer.destroy();
+        }
         
         // Create our own peer
         this.peer = new Peer({
+            host: serverConfig.host,
+            port: serverConfig.port,
+            secure: serverConfig.secure,
+            path: serverConfig.path || '/',
             debug: 2
         });
 
+        let connectionTimeout;
+        let hasConnected = false;
+
         this.peer.on('open', (id) => {
-            console.log('[MP] Client peer opened with ID:', id);
+            console.log('[MP] Client peer opened with ID:', id, 'on server:', serverConfig.name);
             console.log('[MP] Attempting to connect to host: f1race-' + this.roomCode);
             
             // Connect to the host
@@ -86,29 +193,33 @@ class Multiplayer {
                 reliable: true
             });
 
+            // Set timeout for connection to host
+            connectionTimeout = setTimeout(() => {
+                if (!hasConnected && !this.connected) {
+                    console.log('[MP] Connection to host timeout on server:', serverConfig.name);
+                    this._handleServerFailure(null, onConnect, onError, 'timeout');
+                }
+            }, 5000);
+
             this.connection.on('open', () => {
+                hasConnected = true;
+                clearTimeout(connectionTimeout);
                 console.log('[MP] Connection to host opened!');
                 this.setupConnection(onConnect);
             });
 
             this.connection.on('error', (err) => {
-                console.error('[MP] Connection error:', err);
-                if (onError) onError('connection-failed');
+                clearTimeout(connectionTimeout);
+                console.error('[MP] Connection error on server:', serverConfig.name, err);
+                this._handleServerFailure(null, onConnect, onError, 'connection-failed');
             });
         });
 
         this.peer.on('error', (err) => {
-            console.error('[MP] Client peer error:', err);
-            if (onError) onError(err.type);
+            clearTimeout(connectionTimeout);
+            console.error('[MP] Client peer error on server:', serverConfig.name, err);
+            this._handleServerFailure(null, onConnect, onError, err.type);
         });
-
-        // Timeout if connection takes too long
-        setTimeout(() => {
-            if (!this.connected) {
-                console.log('[MP] Connection timeout - connected:', this.connected);
-                if (onError) onError('timeout');
-            }
-        }, 10000);
     }
 
     /**
