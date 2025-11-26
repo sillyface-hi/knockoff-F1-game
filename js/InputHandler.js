@@ -6,7 +6,9 @@ class InputHandler {
             ArrowLeft: false,
             ArrowRight: false,
             Space: false,
-            Shift: false // Keep for turbo/boost maybe? Or remove if unused. User said "instead of shift", so maybe remove or keep as optional.
+            Shift: false, // Keep for turbo/boost maybe? Or remove if unused. User said "instead of shift", so maybe remove or keep as optional.
+            S: false,
+            P: false
         };
 
         window.addEventListener('keydown', (e) => {
@@ -16,6 +18,8 @@ class InputHandler {
             if (e.code === 'ArrowRight') this.keys.ArrowRight = true;
             if (e.code === 'Space') this.keys.Space = true;
             if (e.key === 'Shift') this.keys.Shift = true;
+            if (e.key === 's' || e.key === 'S') this.keys.S = true;
+            if (e.key === 'p' || e.key === 'P') this.keys.P = true;
         });
 
         window.addEventListener('keyup', (e) => {
@@ -25,6 +29,8 @@ class InputHandler {
             if (e.code === 'ArrowRight') this.keys.ArrowRight = false;
             if (e.code === 'Space') this.keys.Space = false;
             if (e.key === 'Shift') this.keys.Shift = false;
+            if (e.key === 's' || e.key === 'S') this.keys.S = false;
+            if (e.key === 'p' || e.key === 'P') this.keys.P = false;
         });
     }
 }

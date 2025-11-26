@@ -19,7 +19,14 @@ class Game {
         this.player = null;
         this.selectedDriverId = null;
         this.selectedTire = 'SOFT';
-        this.gameMode = 'race'; // 'race', 'time_trials', or 'multiplayer'
+        this.gameMode = 'race'; // 'race', 'time_trials', 'multiplayer', or 'leaderboard'
+        this.sharePromptOpen = false;
+        this.saveKeyHandled = false;
+        this.isPaused = false;
+        this.pauseStage = 'none'; // 'none', 'paused', 'confirm'
+        this.pauseKeyHandled = false;
+        this.pauseStartTime = null;
+        this.pauseKeySnapshot = {};
 
         // Multiplayer
         this.multiplayer = null;
@@ -36,6 +43,8 @@ class Game {
         this.currentLapTime = 0;
         this.bestLapTime = Infinity;
         this.lapHistory = []; // Array of completed lap times
+        this.currentLapRecording = []; // Positions recorded for current lap (time trials)
+        this.bestLapRecording = null; // Recording from best lap
 
         // Debug flag – set to true in main.js if you want start‑line overlay
         this.debugStart = false;
@@ -63,6 +72,107 @@ class Game {
         this.setupUI();
     }
 
+    handlePauseInput() {
+        if (!this.input || !this.input.keys) return;
+        const pressed = !!this.input.keys.P;
+
+        if (pressed && !this.pauseKeyHandled) {
+            this.pauseKeyHandled = true;
+            if (!this.isPaused) {
+                this.enterPause();
+            } else if (this.pauseStage === 'paused') {
+                this.showPauseQuitScreen();
+            }
+        } else if (!pressed) {
+            this.pauseKeyHandled = false;
+        }
+
+        // Unpause via any NEW key press when paused (excluding toggle key)
+        if (this.isPaused && this.pauseStage === 'paused') {
+            if (!this.pauseKeySnapshot) this.pauseKeySnapshot = {};
+            let resume = false;
+            Object.entries(this.input.keys).forEach(([key, value]) => {
+                const pressed = !!value;
+                const prev = !!this.pauseKeySnapshot[key];
+                if (pressed && !prev && key !== 'P') {
+                    resume = true;
+                }
+                this.pauseKeySnapshot[key] = pressed;
+            });
+            if (resume) {
+                this.resumeFromPause();
+                return;
+            }
+        }
+    }
+
+    enterPause() {
+        if (this.isPaused) return;
+        this.isPaused = true;
+        this.pauseStage = 'paused';
+        this.pauseStartTime = Date.now();
+        this.pauseKeySnapshot = { ...(this.input ? this.input.keys : {}) };
+        const ind = document.getElementById('pause-indicator');
+        if (ind) ind.style.display = '';
+        if (this.engineSound) this.engineSound.mute();
+    }
+
+    resumeFromPause() {
+        if (!this.isPaused) return;
+        this.isPaused = false;
+        this.pauseStage = 'none';
+        this.pauseKeySnapshot = {};
+        const ind = document.getElementById('pause-indicator');
+        if (ind) ind.style.display = 'none';
+
+        // Adjust lap timer so paused time is not counted
+        if (this.currentLapStartTime && this.pauseStartTime) {
+            const pausedMs = Date.now() - this.pauseStartTime;
+            this.currentLapStartTime += pausedMs;
+        }
+        this.pauseStartTime = null;
+        if (this.engineSound) this.engineSound.unmute();
+    }
+
+    showPauseQuitScreen() {
+        this.pauseStage = 'confirm';
+        const ind = document.getElementById('pause-indicator');
+        if (ind) ind.style.display = 'none';
+        const pauseScreen = document.getElementById('pause-quit-screen');
+        if (pauseScreen) {
+            pauseScreen.classList.remove('hidden');
+            pauseScreen.classList.add('active');
+        }
+    }
+
+    cancelQuitFromPause() {
+        const pauseScreen = document.getElementById('pause-quit-screen');
+        if (pauseScreen) {
+            pauseScreen.classList.remove('active');
+            pauseScreen.classList.add('hidden');
+        }
+        this.pauseStage = 'paused';
+        this.pauseKeySnapshot = { ...(this.input ? this.input.keys : {}) };
+        const ind = document.getElementById('pause-indicator');
+        if (ind) ind.style.display = '';
+    }
+
+    confirmQuitFromPause() {
+        const pauseScreen = document.getElementById('pause-quit-screen');
+        if (pauseScreen) {
+            pauseScreen.classList.remove('active');
+            pauseScreen.classList.add('hidden');
+        }
+        this.isPaused = false;
+        this.pauseStage = 'none';
+        this.pauseStartTime = null;
+        this.pauseKeySnapshot = {};
+        const ind = document.getElementById('pause-indicator');
+        if (ind) ind.style.display = 'none';
+        if (this.engineSound) this.engineSound.unmute();
+        this.goToMainMenu();
+    }
+
     // ---------------------------------------------------------------------
     // UI setup
     // ---------------------------------------------------------------------
@@ -80,6 +190,14 @@ class Game {
             timeTrialsBtn.addEventListener('click', () => {
                 if (window.MenuSound) MenuSound.playClick();
                 this.gameMode = 'time_trials';
+                this.showTrackSelection();
+            });
+        }
+        const leaderboardBtn = document.getElementById('leaderboard-btn');
+        if (leaderboardBtn) {
+            leaderboardBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.gameMode = 'leaderboard';
                 this.showTrackSelection();
             });
         }
@@ -202,6 +320,36 @@ class Game {
                 this.cancelMultiplayer();
             });
         }
+
+        const shareCancelBtn = document.getElementById('share-cancel-btn');
+        if (shareCancelBtn) {
+            shareCancelBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.hideShareTimePrompt();
+            });
+        }
+        const shareOkBtn = document.getElementById('share-ok-btn');
+        if (shareOkBtn) {
+            shareOkBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.confirmShareTime();
+            });
+        }
+
+        const pauseNoBtn = document.getElementById('pause-no-btn');
+        if (pauseNoBtn) {
+            pauseNoBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.cancelQuitFromPause();
+            });
+        }
+        const pauseYesBtn = document.getElementById('pause-yes-btn');
+        if (pauseYesBtn) {
+            pauseYesBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.confirmQuitFromPause();
+            });
+        }
     }
 
     backFromTrack() {
@@ -254,6 +402,9 @@ class Game {
         const trackSelect = document.getElementById('track-selection');
         const driverSelect = document.getElementById('driver-selection');
         const tyreSelect = document.getElementById('tyre-selection');
+        const leaderboardScreen = document.getElementById('leaderboard-screen');
+        const shareScreen = document.getElementById('share-time-screen');
+        const pauseQuitScreen = document.getElementById('pause-quit-screen');
         const hud = document.getElementById('hud');
         const results = document.getElementById('results-screen');
         const multiplayerLobby = document.getElementById('multiplayer-lobby');
@@ -261,7 +412,7 @@ class Game {
         const joinRoom = document.getElementById('join-room-screen');
         const multiplayerWaiting = document.getElementById('multiplayer-waiting');
 
-        [trackSelect, driverSelect, tyreSelect, hud, results, multiplayerLobby, createRoom, joinRoom, multiplayerWaiting].forEach(el => {
+        [trackSelect, driverSelect, tyreSelect, leaderboardScreen, shareScreen, pauseQuitScreen, hud, results, multiplayerLobby, createRoom, joinRoom, multiplayerWaiting].forEach(el => {
             if (!el) return;
             el.classList.remove('active');
             el.classList.add('hidden');
@@ -285,6 +436,15 @@ class Game {
         this.opponentCar = null;
         this.selectedDriverId = null;
         this.selectedTire = 'SOFT';
+        this.gameMode = 'race';
+        this.sharePromptOpen = false;
+        this.saveKeyHandled = false;
+        this.isPaused = false;
+        this.pauseStage = 'none';
+        this.pauseStartTime = null;
+        this.pauseKeySnapshot = {};
+        const ind = document.getElementById('pause-indicator');
+        if (ind) ind.style.display = 'none';
     }
 
     // ---------------------------------------------------------------------
@@ -512,13 +672,19 @@ class Game {
             window.TRACKS.forEach(track => {
                 const card = document.createElement('div');
                 card.className = 'track-card';
-                // In time trials, don't show lap count
-                if (this.gameMode === 'time_trials') {
+                // In time trials and leaderboard, don't show lap count
+                if (this.gameMode === 'time_trials' || this.gameMode === 'leaderboard') {
                     card.innerHTML = `<h3>${track.name}</h3>`;
                 } else {
                     card.innerHTML = `<h3>${track.name}</h3><p>${track.laps} Laps</p>`;
                 }
-                card.addEventListener('click', () => this.loadTrack(track));
+                card.addEventListener('click', () => {
+                    if (this.gameMode === 'leaderboard') {
+                        this.showLeaderboardForTrack(track);
+                    } else {
+                        this.loadTrack(track);
+                    }
+                });
                 trackList.appendChild(card);
             });
         }
@@ -911,6 +1077,13 @@ class Game {
         if (this.state === 'MENU') {
             // nothing for now
         } else if (this.state === 'RACE') {
+            this.handlePauseInput();
+
+            // If paused, freeze game logic (no updates / timers)
+            if (this.isPaused) {
+                return;
+            }
+
             this.updateWeather();
 
             // Handle F1-style start light sequence before allowing cars to move
@@ -983,7 +1156,19 @@ class Game {
                     });
                 }
             }
-            
+
+            // Handle Save (S) key in time trials to open share prompt
+            if (this.gameMode === 'time_trials' && this.input && this.input.keys) {
+                if (this.input.keys.S) {
+                    if (!this.saveKeyHandled && !this.sharePromptOpen && this.bestLapTime !== Infinity) {
+                        this.showShareTimePrompt();
+                        this.saveKeyHandled = true;
+                    }
+                } else {
+                    this.saveKeyHandled = false;
+                }
+            }
+
             if (this.player) {
                 this.camera.x = this.player.x - this.width / 2;
                 this.camera.y = this.player.y - this.height / 2;
@@ -1156,12 +1341,175 @@ class Game {
             }
         }
     }
-    
+
     formatTime(ms) {
         const m = Math.floor(ms / 60000);
         const s = Math.floor((ms % 60000) / 1000);
         const millis = Math.floor(ms % 1000);
         return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${millis.toString().padStart(3, '0')}`;
+    }
+
+    showShareTimePrompt() {
+        if (this.bestLapTime === Infinity) return;
+        const shareScreen = document.getElementById('share-time-screen');
+        const nameInput = document.getElementById('share-name-input');
+        if (shareScreen) {
+            shareScreen.classList.remove('hidden');
+            shareScreen.classList.add('active');
+            this.sharePromptOpen = true;
+        }
+        if (nameInput) {
+            nameInput.classList.remove('invalid');
+            // Clear for fresh entry each time
+            nameInput.value = '';
+        }
+    }
+
+    hideShareTimePrompt() {
+        const shareScreen = document.getElementById('share-time-screen');
+        if (shareScreen) {
+            shareScreen.classList.remove('active');
+            shareScreen.classList.add('hidden');
+        }
+        this.sharePromptOpen = false;
+    }
+
+    confirmShareTime() {
+        if (this.bestLapTime === Infinity || !this.track || !this.player) {
+            this.hideShareTimePrompt();
+            return;
+        }
+        const nameInput = document.getElementById('share-name-input');
+        let username = nameInput && nameInput.value ? nameInput.value.trim() : '';
+        if (!username || username.length < 2) {
+            if (nameInput) nameInput.classList.add('invalid');
+            return; // require at least 2 letters
+        }
+        if (nameInput) nameInput.classList.remove('invalid');
+
+        this.saveTimeTrialResult(this.track, this.player, this.bestLapTime, username);
+        this.hideShareTimePrompt();
+    }
+
+    // ---------------------------------------------------------------------
+    // Time Trial Leaderboard persistence
+    // ---------------------------------------------------------------------
+    saveTimeTrialResult(track, player, timeMs, username) {
+        if (!track || !track.id || !player) return;
+        const storageKey = 'f1_2026_leaderboards_v1';
+        let data = {};
+        try {
+            const raw = localStorage.getItem(storageKey);
+            if (raw) data = JSON.parse(raw) || {};
+        } catch (e) {
+            console.warn('Failed to read leaderboards from storage', e);
+        }
+
+        if (!data[track.id]) data[track.id] = {};
+
+        const nameKey = username || player.driverName || 'Player';
+        const existing = data[track.id][nameKey];
+        if (!existing || timeMs < existing.timeMs) {
+            data[track.id][nameKey] = {
+                username: nameKey,
+                driverName: player.driverName || null,
+                timeMs: timeMs,
+                teamId: player.teamId || null,
+                color: player.color || '#ffffff'
+            };
+        }
+
+        try {
+            localStorage.setItem(storageKey, JSON.stringify(data));
+        } catch (e) {
+            console.warn('Failed to save leaderboards to storage', e);
+        }
+    }
+
+    loadLeaderboardEntries(trackId) {
+        const storageKey = 'f1_2026_leaderboards_v1';
+        try {
+            const raw = localStorage.getItem(storageKey);
+            if (!raw) return [];
+            const data = JSON.parse(raw) || {};
+            const trackBoard = data[trackId] || {};
+            return Object.values(trackBoard).sort((a, b) => a.timeMs - b.timeMs);
+        } catch (e) {
+            console.warn('Failed to load leaderboards', e);
+            return [];
+        }
+    }
+
+    showLeaderboardForTrack(trackData) {
+        const trackSelect = document.getElementById('track-selection');
+        const leaderboardScreen = document.getElementById('leaderboard-screen');
+        const nameEl = document.getElementById('leaderboard-track-name');
+        const listEl = document.getElementById('leaderboard-list');
+
+        if (trackSelect) {
+            trackSelect.classList.remove('active');
+            trackSelect.classList.add('hidden');
+        }
+        if (leaderboardScreen) {
+            leaderboardScreen.classList.remove('hidden');
+            leaderboardScreen.classList.add('active');
+        }
+
+        if (nameEl) {
+            nameEl.textContent = trackData.name || 'Unknown Track';
+        }
+
+        if (listEl) {
+            const entries = this.loadLeaderboardEntries(trackData.id);
+            if (!entries.length) {
+                listEl.innerHTML = `<div class="result-row"><span class="name">No time trial results yet for this track.</span></div>`;
+            } else {
+                listEl.innerHTML = '';
+                entries.forEach((entry, index) => {
+                    const row = document.createElement('div');
+                    row.className = 'result-row';
+                    const timeStr = this.formatTime(entry.timeMs);
+                    const displayName = entry.username || entry.driverName || 'Player';
+                    row.innerHTML = `
+                        <span class="pos">${index + 1}</span>
+                        <span class="name">${displayName}</span>
+                        <span class="team" style="color:${entry.color || '#ffffff'}">■</span>
+                        <span class="time">${timeStr}</span>
+                    `;
+                    listEl.appendChild(row);
+                });
+            }
+        }
+
+        // Wire up leaderboard back buttons (once)
+        const backBtn = document.getElementById('leaderboard-back-btn');
+        if (backBtn && !backBtn._handlerAttached) {
+            backBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                // Return to track selection in leaderboard mode
+                const lbScreen = document.getElementById('leaderboard-screen');
+                const ts = document.getElementById('track-selection');
+                if (lbScreen) {
+                    lbScreen.classList.remove('active');
+                    lbScreen.classList.add('hidden');
+                }
+                if (ts) {
+                    ts.classList.remove('hidden');
+                    ts.classList.add('active');
+                    this.state = 'TRACK_SELECT';
+                }
+            });
+            backBtn._handlerAttached = true;
+        }
+
+        const mainBtn = document.getElementById('leaderboard-main-btn');
+        if (mainBtn && !mainBtn._handlerAttached) {
+            mainBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.goToMainMenu();
+            });
+            mainBtn._handlerAttached = true;
+        }
     }
 
     // ---------------------------------------------------------------------
@@ -1355,23 +1703,19 @@ class Game {
     }
 
     // ---------------------------------------------------------------------
-    // Ghost car rendering for time trials
+    // Ghost car helpers for time trials
     // ---------------------------------------------------------------------
-    drawGhostCar() {
-        if (!this.bestLapRecording || this.bestLapRecording.length === 0) {
-            return;
+    getGhostPosition() {
+        if (!this.bestLapRecording || this.bestLapRecording.length === 0 || !this.currentLapStartTime) {
+            return null;
         }
-        
         const elapsed = Date.now() - this.currentLapStartTime;
-        
-        // Find the position in the recording closest to current elapsed time
-        // Use interpolation for smoother ghost movement
+
         let ghostPos = null;
         for (let i = 0; i < this.bestLapRecording.length - 1; i++) {
             const curr = this.bestLapRecording[i];
             const next = this.bestLapRecording[i + 1];
             if (elapsed >= curr.time && elapsed <= next.time) {
-                // Interpolate between current and next position
                 const t = (elapsed - curr.time) / (next.time - curr.time);
                 ghostPos = {
                     x: curr.x + (next.x - curr.x) * t,
@@ -1381,54 +1725,52 @@ class Game {
                 break;
             }
         }
-        
-        // If before the first recording point, use first position
+
         if (!ghostPos && elapsed < this.bestLapRecording[0].time) {
             ghostPos = this.bestLapRecording[0];
         }
-        
-        // If we've passed the end of the recording, use the last position
         if (!ghostPos) {
             ghostPos = this.bestLapRecording[this.bestLapRecording.length - 1];
         }
-        
+        return ghostPos || null;
+    }
+
+    drawGhostCar() {
+        const ghostPos = this.getGhostPosition();
         if (!ghostPos) return;
-        
-        // Draw ghost car with 40% opacity (more visible)
+
         this.ctx.save();
         this.ctx.globalAlpha = 0.4;
         this.ctx.translate(ghostPos.x, ghostPos.y);
         this.ctx.rotate(ghostPos.angle);
-        
-        // Ghost car body (purple/semi-transparent)
+
         const w = 20;
         const h = 40;
-        
         this.ctx.fillStyle = '#a855f7'; // Purple ghost color
-        
+
         // Main body
         this.ctx.fillRect(-w / 2 + 2, -h / 2 + 10, w - 4, h - 15);
-        
+
         // Nose cone
         this.ctx.beginPath();
         this.ctx.moveTo(-w / 4, -h / 2 + 10);
         this.ctx.lineTo(0, -h / 2 - 5);
         this.ctx.lineTo(w / 4, -h / 2 + 10);
         this.ctx.fill();
-        
+
         // Front wing
         this.ctx.fillRect(-w / 2 - 2, -h / 2 - 5, w + 4, 5);
-        
+
         // Rear wing
         this.ctx.fillRect(-w / 2 - 2, h / 2 - 5, w + 4, 5);
-        
-        // Tires
-        this.ctx.fillStyle = 'rgba(50, 50, 50, 0.5)';
+
+        // Tires – same purple as ghost body
+        this.ctx.fillStyle = '#a855f7';
         this.ctx.fillRect(-w / 2 - 4, -h / 2 + 2, 5, 10);
         this.ctx.fillRect(w / 2 - 1, -h / 2 + 2, 5, 10);
         this.ctx.fillRect(-w / 2 - 4, h / 2 - 12, 5, 10);
         this.ctx.fillRect(w / 2 - 1, h / 2 - 12, 5, 10);
-        
+
         this.ctx.restore();
     }
 
@@ -1442,12 +1784,14 @@ class Game {
             this.ctx.save();
             this.ctx.translate(-this.camera.x, -this.camera.y);
             if (this.track) this.track.draw(this.ctx);
-            
-            // Draw ghost car in time trials (before player car so it appears behind)
+
+            let ghostPos = null;
             if (this.gameMode === 'time_trials' && this.bestLapRecording && this.bestLapRecording.length > 0 && this.currentLapStartTime) {
+                ghostPos = this.getGhostPosition();
+                // Draw ghost car on main view (before player car so it appears behind)
                 this.drawGhostCar();
             }
-            
+
             this.cars.forEach(car => car.draw(this.ctx));
 
             // Driver label (number + name) above each car, aligned to screen
@@ -1483,7 +1827,12 @@ class Game {
             this.ctx.restore();
         }
         if (this.state === 'RACE' && this.minimap) {
-            this.minimap.render(this.cars, this.player);
+            // Pass ghost position to minimap so it can be drawn there as well
+            if (this.gameMode === 'time_trials' && this.bestLapRecording && this.bestLapRecording.length > 0 && this.currentLapStartTime) {
+                this.minimap.render(this.cars, this.player, this.getGhostPosition());
+            } else {
+                this.minimap.render(this.cars, this.player, null);
+            }
         }
     }
 }

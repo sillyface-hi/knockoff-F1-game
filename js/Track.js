@@ -1,6 +1,8 @@
 class Track {
     constructor(trackData) {
         this.data = trackData;
+        this.id = trackData.id;
+        this.name = trackData.name;
         this.waypoints = trackData.waypoints;
         this.laps = trackData.laps;
         this.racingLine = trackData.racingLine;

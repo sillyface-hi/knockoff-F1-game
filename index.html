@@ -24,6 +24,7 @@
                     <button id="race-btn" class="btn-primary">RACE</button>
                     <button id="time-trials-btn" class="btn-primary">TIME TRIALS</button>
                     <button id="multiplayer-btn" class="btn-primary">MULTIPLAYER</button>
+                    <button id="leaderboard-btn" class="btn-primary">LEADERBOARD</button>
                 </div>
             </div>
 
@@ -37,6 +38,21 @@
                     <div class="menu-actions">
                         <button id="track-back-btn" class="btn-secondary">BACK</button>
                         <button id="track-main-btn" class="btn-secondary">BACK TO MAIN MENU</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Leaderboard Screen -->
+            <div id="leaderboard-screen" class="screen hidden">
+                <div class="menu-content">
+                    <h2>LEADERBOARD</h2>
+                    <h3 id="leaderboard-track-name"></h3>
+                    <div id="leaderboard-list" class="leaderboard-list">
+                        <!-- Leaderboard rows injected by JS -->
+                    </div>
+                    <div class="menu-actions">
+                        <button id="leaderboard-back-btn" class="btn-secondary">BACK</button>
+                        <button id="leaderboard-main-btn" class="btn-secondary">BACK TO MAIN MENU</button>
                     </div>
                 </div>
             </div>
@@ -109,6 +125,9 @@
                                 <div id="tire-wear-fill"></div>
                             </div>
                         </div>
+                        <div id="pause-indicator" class="pause-indicator">
+                            P = PAUSE
+                        </div>
                     </div>
                 </div>
 
@@ -120,6 +139,9 @@
                     <div class="current-lap">
                         <span class="label">CURRENT</span>
                         <span id="lap-time-display" class="lap-time-value">00:00.000</span>
+                    </div>
+                    <div id="save-times-hint" class="save-times-hint">
+                        Press S to share your best lap to the leaderboard
                     </div>
                 </div>
 
@@ -200,6 +222,34 @@
                 <h2>RACE FINISHED</h2>
                 <div id="results-list"></div>
                 <button id="restart-btn" class="btn-secondary">BACK TO MAIN MENU</button>
+            </div>
+
+            <!-- Share Time Confirmation -->
+            <div id="share-time-screen" class="screen hidden">
+                <div class="menu-content">
+                    <h2>SHARE TIME</h2>
+                    <p>Are you sure that you want to share your time?</p>
+                    <div class="share-name-block">
+                        <span class="label">NAME / USERNAME</span>
+                        <input id="share-name-input" class="share-name-input" type="text" maxlength="20" placeholder="At least 2 letters">
+                    </div>
+                    <div class="menu-actions">
+                        <button id="share-cancel-btn" class="btn-secondary">CANCEL</button>
+                        <button id="share-ok-btn" class="btn-primary">OKAY</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pause Quit Confirmation -->
+            <div id="pause-quit-screen" class="screen hidden">
+                <div class="menu-content">
+                    <h2>PAUSED</h2>
+                    <p>Do you want to quit the game?</p>
+                    <div class="menu-actions">
+                        <button id="pause-no-btn" class="btn-secondary">NO</button>
+                        <button id="pause-yes-btn" class="btn-primary">YES</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

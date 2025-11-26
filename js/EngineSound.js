@@ -28,10 +28,17 @@ class EngineSound {
         this.osc.start();
 
         this.enabled = true;
+        this.lastVolume = 0;
+        this.isMuted = false;
     }
 
     setState(speed, gear, throttlePressed) {
         if (!this.enabled) return;
+        if (this.isMuted) {
+            this.gainNode.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
+            this.lastVolume = 0;
+            return;
+        }
 
         // Normalize speed against an approximate "racing" speed
         const normSpeed = Math.min(1, Math.max(0, Math.abs(speed) / 8));
@@ -56,15 +63,29 @@ class EngineSound {
 
         this.osc.frequency.setTargetAtTime(freq, this.ctx.currentTime, 0.02);
         this.gainNode.gain.setTargetAtTime(volume, this.ctx.currentTime, 0.05);
+        this.lastVolume = volume;
     }
 
     stop() {
         if (!this.enabled) return;
         try {
             this.gainNode.gain.setTargetAtTime(0, this.ctx.currentTime, 0.1);
+            this.lastVolume = 0;
         } catch (e) {
             // ignore
         }
+    }
+
+    mute() {
+        if (!this.enabled) return;
+        this.isMuted = true;
+        this.gainNode.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
+    }
+
+    unmute() {
+        if (!this.enabled) return;
+        this.isMuted = false;
+        this.gainNode.gain.setTargetAtTime(this.lastVolume || 0, this.ctx.currentTime, 0.05);
     }
 }
 
