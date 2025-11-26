@@ -19,7 +19,14 @@ class Game {
         this.player = null;
         this.selectedDriverId = null;
         this.selectedTire = 'SOFT';
-        this.gameMode = 'race'; // 'race' or 'time_trials'
+        this.gameMode = 'race'; // 'race', 'time_trials', or 'multiplayer'
+
+        // Multiplayer
+        this.multiplayer = null;
+        this.opponentCar = null;
+        this.selectedDriverInfo = null;
+        this.opponentDriverInfo = null;
+        this.opponentReady = false; // Track if opponent sent ready signal
 
         // Minimap
         this.minimap = null;
@@ -129,6 +136,72 @@ class Game {
                 this.goToMainMenu();
             });
         }
+
+        // Multiplayer buttons
+        const multiplayerBtn = document.getElementById('multiplayer-btn');
+        if (multiplayerBtn) {
+            multiplayerBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.gameMode = 'multiplayer';
+                this.showMultiplayerLobby();
+            });
+        }
+
+        const createRoomBtn = document.getElementById('create-room-btn');
+        if (createRoomBtn) {
+            createRoomBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.createMultiplayerRoom();
+            });
+        }
+
+        const joinRoomBtn = document.getElementById('join-room-btn');
+        if (joinRoomBtn) {
+            joinRoomBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.showJoinRoom();
+            });
+        }
+
+        const joinConnectBtn = document.getElementById('join-connect-btn');
+        if (joinConnectBtn) {
+            joinConnectBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.joinMultiplayerRoom();
+            });
+        }
+
+        const lobbyBackBtn = document.getElementById('lobby-back-btn');
+        if (lobbyBackBtn) {
+            lobbyBackBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.goToMainMenu();
+            });
+        }
+
+        const createBackBtn = document.getElementById('create-back-btn');
+        if (createBackBtn) {
+            createBackBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.cancelMultiplayer();
+            });
+        }
+
+        const joinBackBtn = document.getElementById('join-back-btn');
+        if (joinBackBtn) {
+            joinBackBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.backToLobby();
+            });
+        }
+
+        const waitingCancelBtn = document.getElementById('waiting-cancel-btn');
+        if (waitingCancelBtn) {
+            waitingCancelBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.cancelMultiplayer();
+            });
+        }
     }
 
     backFromTrack() {
@@ -183,8 +256,12 @@ class Game {
         const tyreSelect = document.getElementById('tyre-selection');
         const hud = document.getElementById('hud');
         const results = document.getElementById('results-screen');
+        const multiplayerLobby = document.getElementById('multiplayer-lobby');
+        const createRoom = document.getElementById('create-room-screen');
+        const joinRoom = document.getElementById('join-room-screen');
+        const multiplayerWaiting = document.getElementById('multiplayer-waiting');
 
-        [trackSelect, driverSelect, tyreSelect, hud, results].forEach(el => {
+        [trackSelect, driverSelect, tyreSelect, hud, results, multiplayerLobby, createRoom, joinRoom, multiplayerWaiting].forEach(el => {
             if (!el) return;
             el.classList.remove('active');
             el.classList.add('hidden');
@@ -194,22 +271,236 @@ class Game {
             menu.classList.add('active');
         }
 
+        // Cleanup multiplayer if active
+        if (this.multiplayer) {
+            this.multiplayer.disconnect();
+            this.multiplayer = null;
+        }
+
         // Reset basic game state
         this.state = 'MENU';
         this.track = null;
         this.cars = [];
         this.player = null;
+        this.opponentCar = null;
         this.selectedDriverId = null;
         this.selectedTire = 'SOFT';
+    }
+
+    // ---------------------------------------------------------------------
+    // Multiplayer screens
+    // ---------------------------------------------------------------------
+    showMultiplayerLobby() {
+        const menu = document.getElementById('main-menu');
+        const lobby = document.getElementById('multiplayer-lobby');
+        if (menu) {
+            menu.classList.remove('active');
+            menu.classList.add('hidden');
+        }
+        if (lobby) {
+            lobby.classList.remove('hidden');
+            lobby.classList.add('active');
+        }
+        this.state = 'MULTIPLAYER_LOBBY';
+    }
+
+    createMultiplayerRoom() {
+        const lobby = document.getElementById('multiplayer-lobby');
+        const createScreen = document.getElementById('create-room-screen');
+        const roomCodeEl = document.getElementById('room-code');
+        const statusEl = document.getElementById('connection-status');
+
+        if (lobby) {
+            lobby.classList.remove('active');
+            lobby.classList.add('hidden');
+        }
+        if (createScreen) {
+            createScreen.classList.remove('hidden');
+            createScreen.classList.add('active');
+        }
+
+        // Initialize multiplayer
+        this.multiplayer = new Multiplayer(this);
+        
+        this.multiplayer.createRoom(
+            // onReady
+            (roomCode) => {
+                console.log('[Game] Room ready with code:', roomCode);
+                if (roomCodeEl) roomCodeEl.textContent = roomCode;
+                if (statusEl) statusEl.textContent = 'Waiting for opponent to join...';
+            },
+            // onConnect
+            () => {
+                console.log('[Game] onConnect callback fired!');
+                if (statusEl) {
+                    statusEl.textContent = 'Opponent connected! Starting game...';
+                    statusEl.classList.add('success');
+                }
+                // Short delay then go to track selection
+                console.log('[Game] Starting 1 second delay before track selection...');
+                setTimeout(() => {
+                    console.log('[Game] Transitioning to track selection');
+                    this.showTrackSelection();
+                }, 1000);
+            },
+            // onError
+            (errorType) => {
+                console.error('[Game] Create room error:', errorType);
+                if (statusEl) {
+                    statusEl.textContent = 'Error: ' + errorType;
+                    statusEl.classList.add('error');
+                }
+            }
+        );
+    }
+
+    showJoinRoom() {
+        const lobby = document.getElementById('multiplayer-lobby');
+        const joinScreen = document.getElementById('join-room-screen');
+        const inputEl = document.getElementById('join-code-input');
+        const statusEl = document.getElementById('join-status');
+
+        if (lobby) {
+            lobby.classList.remove('active');
+            lobby.classList.add('hidden');
+        }
+        if (joinScreen) {
+            joinScreen.classList.remove('hidden');
+            joinScreen.classList.add('active');
+        }
+        if (inputEl) {
+            inputEl.value = '';
+            inputEl.focus();
+        }
+        if (statusEl) {
+            statusEl.textContent = '';
+            statusEl.classList.remove('error', 'success');
+        }
+    }
+
+    joinMultiplayerRoom() {
+        const inputEl = document.getElementById('join-code-input');
+        const statusEl = document.getElementById('join-status');
+        const roomCode = inputEl ? inputEl.value.trim().toUpperCase() : '';
+
+        if (roomCode.length !== 6) {
+            if (statusEl) {
+                statusEl.textContent = 'Please enter a 6-character room code';
+                statusEl.classList.add('error');
+            }
+            return;
+        }
+
+        if (statusEl) {
+            statusEl.textContent = 'Connecting...';
+            statusEl.classList.remove('error', 'success');
+        }
+
+        // Initialize multiplayer
+        this.multiplayer = new Multiplayer(this);
+
+        this.multiplayer.joinRoom(
+            roomCode,
+            // onConnect
+            () => {
+                console.log('[Game] Join onConnect callback fired!');
+                if (statusEl) {
+                    statusEl.textContent = 'Connected! Starting game...';
+                    statusEl.classList.add('success');
+                }
+                // Go to track selection
+                console.log('[Game] Starting 1 second delay before track selection...');
+                setTimeout(() => {
+                    console.log('[Game] Transitioning to track selection');
+                    this.showTrackSelection();
+                }, 1000);
+            },
+            // onError
+            (errorType) => {
+                console.error('[Game] Join room error:', errorType);
+                if (statusEl) {
+                    if (errorType === 'peer-unavailable') {
+                        statusEl.textContent = 'Room not found. Check the code and try again.';
+                    } else if (errorType === 'timeout') {
+                        statusEl.textContent = 'Connection timed out. Try again.';
+                    } else {
+                        statusEl.textContent = 'Connection failed: ' + errorType;
+                    }
+                    statusEl.classList.add('error');
+                }
+                // Cleanup failed connection
+                if (this.multiplayer) {
+                    this.multiplayer.disconnect();
+                    this.multiplayer = null;
+                }
+            }
+        );
+    }
+
+    cancelMultiplayer() {
+        if (this.multiplayer) {
+            this.multiplayer.disconnect();
+            this.multiplayer = null;
+        }
+        this.goToMainMenu();
+    }
+
+    backToLobby() {
+        const joinScreen = document.getElementById('join-room-screen');
+        const lobby = document.getElementById('multiplayer-lobby');
+
+        if (this.multiplayer) {
+            this.multiplayer.disconnect();
+            this.multiplayer = null;
+        }
+
+        if (joinScreen) {
+            joinScreen.classList.remove('active');
+            joinScreen.classList.add('hidden');
+        }
+        if (lobby) {
+            lobby.classList.remove('hidden');
+            lobby.classList.add('active');
+        }
     }
 
     showTrackSelection() {
         const menu = document.getElementById('main-menu');
         const trackSelect = document.getElementById('track-selection');
-        if (menu) {
-            menu.classList.remove('active');
-            menu.classList.add('hidden');
+        const multiplayerLobby = document.getElementById('multiplayer-lobby');
+        const createRoom = document.getElementById('create-room-screen');
+        const joinRoom = document.getElementById('join-room-screen');
+        const multiplayerWaiting = document.getElementById('multiplayer-waiting');
+        
+        // Hide all possible previous screens
+        [menu, multiplayerLobby, createRoom, joinRoom, multiplayerWaiting].forEach(el => {
+            if (el) {
+                el.classList.remove('active');
+                el.classList.add('hidden');
+            }
+        });
+        
+        // In multiplayer, only host selects track - guest waits
+        if (this.gameMode === 'multiplayer' && this.multiplayer && !this.multiplayer.isHost) {
+            // Show waiting screen for guest
+            if (multiplayerWaiting) {
+                multiplayerWaiting.classList.remove('hidden');
+                multiplayerWaiting.classList.add('active');
+            }
+            this.state = 'MULTIPLAYER_WAITING';
+            
+            // Set up callback for when host selects track
+            this.onTrackSelected = (data) => {
+                console.log('[Game] Host selected track:', data.trackName);
+                // Find the track by name
+                const track = window.TRACKS.find(t => t.name === data.trackName);
+                if (track) {
+                    this.loadTrack(track);
+                }
+            };
+            return;
         }
+        
         if (trackSelect) {
             trackSelect.classList.remove('hidden');
             trackSelect.classList.add('active');
@@ -235,16 +526,28 @@ class Game {
 
     loadTrack(trackData) {
         this.track = new Track(trackData);
+        
+        // In multiplayer, host sends track selection to guest
+        if (this.gameMode === 'multiplayer' && this.multiplayer && this.multiplayer.isHost) {
+            this.multiplayer.sendTrackSelection(trackData.name);
+        }
+        
         this.showDriverSelection();
     }
 
     showDriverSelection() {
         const trackSelect = document.getElementById('track-selection');
         const driverSelect = document.getElementById('driver-selection');
-        if (trackSelect) {
-            trackSelect.classList.remove('active');
-            trackSelect.classList.add('hidden');
-        }
+        const multiplayerWaiting = document.getElementById('multiplayer-waiting');
+        
+        // Hide previous screens
+        [trackSelect, multiplayerWaiting].forEach(el => {
+            if (el) {
+                el.classList.remove('active');
+                el.classList.add('hidden');
+            }
+        });
+        
         if (driverSelect) {
             driverSelect.classList.remove('hidden');
             driverSelect.classList.add('active');
@@ -279,6 +582,18 @@ class Game {
                 `;
                 card.addEventListener('click', () => {
                     this.selectedDriverId = driver.id;
+                    this.selectedDriverInfo = {
+                        name: driver.name,
+                        number: driver.number,
+                        teamColor: driver.teamColor,
+                        teamName: driver.teamName
+                    };
+                    
+                    // In multiplayer, send driver selection to opponent
+                    if (this.gameMode === 'multiplayer' && this.multiplayer) {
+                        this.multiplayer.sendDriverSelection(this.selectedDriverInfo);
+                    }
+                    
                     if (window.MenuSound) MenuSound.playClick();
                     // In time trials, skip tire selection and use soft tires
                     if (this.gameMode === 'time_trials') {
@@ -365,12 +680,18 @@ class Game {
             this.engineSound = new EngineSound();
         }
         this.raceStarted = false;
-        this.startSequenceStart = performance.now();
+        this.startSequenceStart = null; // Will be set when race actually starts
         this.startLightsCount = 0;
         this.startLightsOff = false;
         this.raceStartTime = null;
         // F1-style: 5 reds on at 1s intervals, then random delay before lights out
         this.startRandomDelay = 1000 + Math.random() * 1500; // 1.0s–2.5s after 5th light
+        
+        // Multiplayer sync state - preserve opponentReady if already set (opponent was ready before us)
+        this.multiplayerReady = false;
+        // Don't reset opponentReady - it may have been set when we received their ready signal earlier
+        // this.opponentReady is initialized in constructor and set by Multiplayer.js when signal received
+        this.waitingForOpponent = false;
         // Create cars for this track
         this.cars = [];
         this.createCars();
@@ -405,7 +726,56 @@ class Game {
         // Switch to race state
         this.state = 'RACE';
         this.lastTime = performance.now();
+        
+        // In multiplayer, wait for both players to be ready before starting lights
+        if (this.gameMode === 'multiplayer' && this.multiplayer) {
+            this.waitingForOpponent = true;
+            this.multiplayerReady = true;
+            
+            // Set up callback BEFORE sending ready (in case response is fast)
+            this.onOpponentReady = () => {
+                console.log('[Game] onOpponentReady callback fired');
+                this.checkBothPlayersReady();
+            };
+            
+            // Check if opponent was already ready (they sent ready before us)
+            if (this.opponentReady) {
+                console.log('[Game] Opponent was already ready');
+                this.checkBothPlayersReady();
+            }
+            
+            // Send ready signal to opponent
+            console.log('[Game] Sending ready signal');
+            this.multiplayer.sendReady();
+        } else {
+            // Non-multiplayer: start lights immediately
+            this.startSequenceStart = performance.now();
+        }
+        
         this.loop(this.lastTime);
+    }
+    
+    checkBothPlayersReady() {
+        console.log('[Game] checkBothPlayersReady - multiplayerReady:', this.multiplayerReady, 
+                    'opponentReady:', this.opponentReady, 'waitingForOpponent:', this.waitingForOpponent);
+        
+        if (this.multiplayerReady && this.opponentReady && this.waitingForOpponent) {
+            console.log('[Game] Both players ready!');
+            
+            // Host controls the start timing
+            if (this.multiplayer && this.multiplayer.isHost) {
+                console.log('[Game] Host starting race sequence and notifying guest');
+                this.waitingForOpponent = false;
+                
+                // Small delay to ensure sync, then start and notify guest
+                setTimeout(() => {
+                    this.startSequenceStart = performance.now();
+                    this.multiplayer.sendRaceStart(this.startSequenceStart);
+                }, 300);
+            }
+            // Guest keeps waitingForOpponent=true until they receive race-start signal
+            // (handled in Multiplayer.js handleData)
+        }
     }
 
     resetGame() {
@@ -456,6 +826,39 @@ class Game {
             car.tire = this.selectedTire || 'SOFT';
             this.player = car;
             this.cars.push(car);
+            return;
+        }
+
+        // In multiplayer mode, create player and opponent (no AI)
+        if (this.gameMode === 'multiplayer') {
+            const playerDriver = allDrivers[playerIndex];
+            // Player at position 0 (pole) or 1 based on host status
+            const playerGridPos = this.multiplayer && this.multiplayer.isHost ? 0 : 1;
+            const opponentGridPos = playerGridPos === 0 ? 1 : 0;
+            
+            // Create player car
+            const playerStartPos = this.track.getGridPosition(playerGridPos);
+            const playerCar = new Car(playerStartPos.x, playerStartPos.y, playerDriver.teamColor, true);
+            playerCar.angle = playerStartPos.angle;
+            playerCar.driverName = playerDriver.name;
+            playerCar.driverNumber = playerDriver.driverNumber;
+            playerCar.teamId = playerDriver.teamId;
+            playerCar.tire = this.selectedTire || 'SOFT';
+            this.player = playerCar;
+            this.cars.push(playerCar);
+            
+            // Create opponent car (will be position-synced via network)
+            const opponentStartPos = this.track.getGridPosition(opponentGridPos);
+            // Use opponent's driver info if available, otherwise placeholder
+            const opponentInfo = this.opponentDriverInfo || { name: 'Opponent', number: '??', teamColor: '#888888' };
+            this.opponentCar = new Car(opponentStartPos.x, opponentStartPos.y, opponentInfo.teamColor || '#888888', false);
+            this.opponentCar.angle = opponentStartPos.angle;
+            this.opponentCar.driverName = opponentInfo.name || 'Opponent';
+            this.opponentCar.driverNumber = opponentInfo.number || '??';
+            this.opponentCar.teamId = 'opponent';
+            this.opponentCar.tire = 'SOFT';
+            this.opponentCar.isOpponent = true; // Mark as network opponent
+            this.cars.push(this.opponentCar);
             return;
         }
 
@@ -531,10 +934,33 @@ class Game {
             }
 
             this.cars.forEach(car => {
-                // Only allow movement once raceStarted is true
-                const raceActive = this.raceStarted;
+                // Skip network opponent - their position comes from network
+                if (car.isOpponent) return;
+                
+                // Only allow movement once raceStarted is true AND not waiting for opponent
+                const raceActive = this.raceStarted && !this.waitingForOpponent;
                 car.update(this.input, deltaTime, this.track, this.cars, this.weather, raceActive);
             });
+            
+            // Multiplayer position sync
+            if (this.gameMode === 'multiplayer' && this.multiplayer && this.multiplayer.isConnected()) {
+                // Send our position to opponent
+                if (this.player) {
+                    this.multiplayer.sendPosition(this.player);
+                }
+                
+                // Update opponent car from network data
+                const opponentData = this.multiplayer.getOpponentData();
+                if (opponentData && this.opponentCar) {
+                    // Smooth interpolation to opponent position
+                    const lerpFactor = 0.3;
+                    this.opponentCar.x += (opponentData.x - this.opponentCar.x) * lerpFactor;
+                    this.opponentCar.y += (opponentData.y - this.opponentCar.y) * lerpFactor;
+                    this.opponentCar.angle = opponentData.angle;
+                    this.opponentCar.speed = opponentData.speed;
+                    this.opponentCar.lap = opponentData.lap || 0;
+                }
+            }
             
             // Check track limits for time trials
             if (this.gameMode === 'time_trials' && this.player && this.track && this.raceStarted) {
@@ -743,6 +1169,17 @@ class Game {
     // ---------------------------------------------------------------------
     updateHUD() {
         this.checkLaps();
+        
+        // Show/hide multiplayer waiting message
+        const waitingMsg = document.getElementById('multiplayer-race-waiting');
+        if (waitingMsg) {
+            if (this.gameMode === 'multiplayer' && this.waitingForOpponent) {
+                waitingMsg.style.display = '';
+            } else {
+                waitingMsg.style.display = 'none';
+            }
+        }
+        
         const posDisplay = document.getElementById('pos-display');
         const posBox = document.querySelector('.position-box');
         const lapDisplay = document.getElementById('lap-display');
@@ -814,8 +1251,12 @@ class Game {
         // Update start lights UI
         const lightsContainer = document.getElementById('start-lights');
         if (lightsContainer) {
+            // Hide lights when waiting for opponent in multiplayer
+            if (this.gameMode === 'multiplayer' && this.waitingForOpponent) {
+                lightsContainer.style.display = 'none';
+            }
             // Hide the entire start light rig 5 seconds after race start
-            if (this.raceStartTime && performance.now() - this.raceStartTime > 5000) {
+            else if (this.raceStartTime && performance.now() - this.raceStartTime > 5000) {
                 lightsContainer.style.display = 'none';
             } else {
                 lightsContainer.style.display = 'flex';
