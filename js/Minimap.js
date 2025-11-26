@@ -52,7 +52,7 @@ class Minimap {
         return { x: mapX, y: mapY };
     }
 
-    render(cars, playerCar) {
+    render(cars, playerCar, ghostPos) {
         if (!this.canvas || !this.ctx) return;
 
         // Clear
@@ -108,6 +108,15 @@ class Minimap {
                     this.ctx.fill();
                 }
             });
+        }
+
+        // Draw ghost in time trials (if provided)
+        if (ghostPos) {
+            const gpos = this.worldToMinimap(ghostPos.x, ghostPos.y);
+            this.ctx.fillStyle = '#a855f7'; // same purple as main ghost
+            this.ctx.beginPath();
+            this.ctx.arc(gpos.x, gpos.y, 3, 0, Math.PI * 2);
+            this.ctx.fill();
         }
     }
 

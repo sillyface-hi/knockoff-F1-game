@@ -524,6 +524,16 @@ h1 {
     align-items: flex-end;
 }
 
+.pause-indicator {
+    align-self: center;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    border: 1px solid var(--glass-border);
+    background: rgba(0, 0, 0, 0.6);
+    font-size: 0.8rem;
+    opacity: 0.8;
+}
+
 .speed-box {
     background: var(--glass-bg);
     padding: 1rem 1.5rem;

@@ -22,6 +22,11 @@ class Game {
         this.gameMode = 'race'; // 'race', 'time_trials', or 'leaderboard'
         this.sharePromptOpen = false;
         this.saveKeyHandled = false;
+        this.isPaused = false;
+        this.pauseStage = 'none'; // 'none', 'paused', 'confirm'
+        this.pauseKeyHandled = false;
+        this.pauseStartTime = null;
+        this.pauseKeySnapshot = {};
 
         // Minimap
         this.minimap = null;
@@ -31,6 +36,8 @@ class Game {
         this.currentLapTime = 0;
         this.bestLapTime = Infinity;
         this.lapHistory = []; // Array of completed lap times
+        this.currentLapRecording = []; // Positions recorded for current lap (time trials)
+        this.bestLapRecording = null; // Recording from best lap
 
         // Debug flag – set to true in main.js if you want start‑line overlay
         this.debugStart = false;
@@ -56,6 +63,107 @@ class Game {
         }
 
         this.setupUI();
+    }
+
+    handlePauseInput() {
+        if (!this.input || !this.input.keys) return;
+        const pressed = !!this.input.keys.P;
+
+        if (pressed && !this.pauseKeyHandled) {
+            this.pauseKeyHandled = true;
+            if (!this.isPaused) {
+                this.enterPause();
+            } else if (this.pauseStage === 'paused') {
+                this.showPauseQuitScreen();
+            }
+        } else if (!pressed) {
+            this.pauseKeyHandled = false;
+        }
+
+        // Unpause via any NEW key press when paused (excluding toggle key)
+        if (this.isPaused && this.pauseStage === 'paused') {
+            if (!this.pauseKeySnapshot) this.pauseKeySnapshot = {};
+            let resume = false;
+            Object.entries(this.input.keys).forEach(([key, value]) => {
+                const pressed = !!value;
+                const prev = !!this.pauseKeySnapshot[key];
+                if (pressed && !prev && key !== 'P') {
+                    resume = true;
+                }
+                this.pauseKeySnapshot[key] = pressed;
+            });
+            if (resume) {
+                this.resumeFromPause();
+                return;
+            }
+        }
+    }
+
+    enterPause() {
+        if (this.isPaused) return;
+        this.isPaused = true;
+        this.pauseStage = 'paused';
+        this.pauseStartTime = Date.now();
+        this.pauseKeySnapshot = { ...(this.input ? this.input.keys : {}) };
+        const ind = document.getElementById('pause-indicator');
+        if (ind) ind.style.display = '';
+        if (this.engineSound) this.engineSound.mute();
+    }
+
+    resumeFromPause() {
+        if (!this.isPaused) return;
+        this.isPaused = false;
+        this.pauseStage = 'none';
+        this.pauseKeySnapshot = {};
+        const ind = document.getElementById('pause-indicator');
+        if (ind) ind.style.display = 'none';
+
+        // Adjust lap timer so paused time is not counted
+        if (this.currentLapStartTime && this.pauseStartTime) {
+            const pausedMs = Date.now() - this.pauseStartTime;
+            this.currentLapStartTime += pausedMs;
+        }
+        this.pauseStartTime = null;
+        if (this.engineSound) this.engineSound.unmute();
+    }
+
+    showPauseQuitScreen() {
+        this.pauseStage = 'confirm';
+        const ind = document.getElementById('pause-indicator');
+        if (ind) ind.style.display = 'none';
+        const pauseScreen = document.getElementById('pause-quit-screen');
+        if (pauseScreen) {
+            pauseScreen.classList.remove('hidden');
+            pauseScreen.classList.add('active');
+        }
+    }
+
+    cancelQuitFromPause() {
+        const pauseScreen = document.getElementById('pause-quit-screen');
+        if (pauseScreen) {
+            pauseScreen.classList.remove('active');
+            pauseScreen.classList.add('hidden');
+        }
+        this.pauseStage = 'paused';
+        this.pauseKeySnapshot = { ...(this.input ? this.input.keys : {}) };
+        const ind = document.getElementById('pause-indicator');
+        if (ind) ind.style.display = '';
+    }
+
+    confirmQuitFromPause() {
+        const pauseScreen = document.getElementById('pause-quit-screen');
+        if (pauseScreen) {
+            pauseScreen.classList.remove('active');
+            pauseScreen.classList.add('hidden');
+        }
+        this.isPaused = false;
+        this.pauseStage = 'none';
+        this.pauseStartTime = null;
+        this.pauseKeySnapshot = {};
+        const ind = document.getElementById('pause-indicator');
+        if (ind) ind.style.display = 'none';
+        if (this.engineSound) this.engineSound.unmute();
+        this.goToMainMenu();
     }
 
     // ---------------------------------------------------------------------
@@ -154,6 +262,21 @@ class Game {
                 this.confirmShareTime();
             });
         }
+
+        const pauseNoBtn = document.getElementById('pause-no-btn');
+        if (pauseNoBtn) {
+            pauseNoBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.cancelQuitFromPause();
+            });
+        }
+        const pauseYesBtn = document.getElementById('pause-yes-btn');
+        if (pauseYesBtn) {
+            pauseYesBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.confirmQuitFromPause();
+            });
+        }
     }
 
     backFromTrack() {
@@ -208,10 +331,11 @@ class Game {
         const tyreSelect = document.getElementById('tyre-selection');
         const leaderboardScreen = document.getElementById('leaderboard-screen');
         const shareScreen = document.getElementById('share-time-screen');
+        const pauseQuitScreen = document.getElementById('pause-quit-screen');
         const hud = document.getElementById('hud');
         const results = document.getElementById('results-screen');
 
-        [trackSelect, driverSelect, tyreSelect, leaderboardScreen, shareScreen, hud, results].forEach(el => {
+        [trackSelect, driverSelect, tyreSelect, leaderboardScreen, shareScreen, pauseQuitScreen, hud, results].forEach(el => {
             if (!el) return;
             el.classList.remove('active');
             el.classList.add('hidden');
@@ -231,6 +355,12 @@ class Game {
         this.gameMode = 'race';
         this.sharePromptOpen = false;
         this.saveKeyHandled = false;
+        this.isPaused = false;
+        this.pauseStage = 'none';
+        this.pauseStartTime = null;
+        this.pauseKeySnapshot = {};
+        const ind = document.getElementById('pause-indicator');
+        if (ind) ind.style.display = 'none';
     }
 
     showTrackSelection() {
@@ -544,6 +674,13 @@ class Game {
         if (this.state === 'MENU') {
             // nothing for now
         } else if (this.state === 'RACE') {
+            this.handlePauseInput();
+
+            // If paused, freeze game logic (no updates / timers)
+            if (this.isPaused) {
+                return;
+            }
+
             this.updateWeather();
 
             // Handle F1-style start light sequence before allowing cars to move
@@ -1125,23 +1262,19 @@ class Game {
     }
 
     // ---------------------------------------------------------------------
-    // Ghost car rendering for time trials
+    // Ghost car helpers for time trials
     // ---------------------------------------------------------------------
-    drawGhostCar() {
-        if (!this.bestLapRecording || this.bestLapRecording.length === 0) {
-            return;
+    getGhostPosition() {
+        if (!this.bestLapRecording || this.bestLapRecording.length === 0 || !this.currentLapStartTime) {
+            return null;
         }
-        
         const elapsed = Date.now() - this.currentLapStartTime;
-        
-        // Find the position in the recording closest to current elapsed time
-        // Use interpolation for smoother ghost movement
+
         let ghostPos = null;
         for (let i = 0; i < this.bestLapRecording.length - 1; i++) {
             const curr = this.bestLapRecording[i];
             const next = this.bestLapRecording[i + 1];
             if (elapsed >= curr.time && elapsed <= next.time) {
-                // Interpolate between current and next position
                 const t = (elapsed - curr.time) / (next.time - curr.time);
                 ghostPos = {
                     x: curr.x + (next.x - curr.x) * t,
@@ -1151,54 +1284,52 @@ class Game {
                 break;
             }
         }
-        
-        // If before the first recording point, use first position
+
         if (!ghostPos && elapsed < this.bestLapRecording[0].time) {
             ghostPos = this.bestLapRecording[0];
         }
-        
-        // If we've passed the end of the recording, use the last position
         if (!ghostPos) {
             ghostPos = this.bestLapRecording[this.bestLapRecording.length - 1];
         }
-        
+        return ghostPos || null;
+    }
+
+    drawGhostCar() {
+        const ghostPos = this.getGhostPosition();
         if (!ghostPos) return;
-        
-        // Draw ghost car with 40% opacity (more visible)
+
         this.ctx.save();
         this.ctx.globalAlpha = 0.4;
         this.ctx.translate(ghostPos.x, ghostPos.y);
         this.ctx.rotate(ghostPos.angle);
-        
-        // Ghost car body (purple/semi-transparent)
+
         const w = 20;
         const h = 40;
-        
         this.ctx.fillStyle = '#a855f7'; // Purple ghost color
-        
+
         // Main body
         this.ctx.fillRect(-w / 2 + 2, -h / 2 + 10, w - 4, h - 15);
-        
+
         // Nose cone
         this.ctx.beginPath();
         this.ctx.moveTo(-w / 4, -h / 2 + 10);
         this.ctx.lineTo(0, -h / 2 - 5);
         this.ctx.lineTo(w / 4, -h / 2 + 10);
         this.ctx.fill();
-        
+
         // Front wing
         this.ctx.fillRect(-w / 2 - 2, -h / 2 - 5, w + 4, 5);
-        
+
         // Rear wing
         this.ctx.fillRect(-w / 2 - 2, h / 2 - 5, w + 4, 5);
-        
-        // Tires
-        this.ctx.fillStyle = 'rgba(50, 50, 50, 0.5)';
+
+        // Tires – same purple as ghost body
+        this.ctx.fillStyle = '#a855f7';
         this.ctx.fillRect(-w / 2 - 4, -h / 2 + 2, 5, 10);
         this.ctx.fillRect(w / 2 - 1, -h / 2 + 2, 5, 10);
         this.ctx.fillRect(-w / 2 - 4, h / 2 - 12, 5, 10);
         this.ctx.fillRect(w / 2 - 1, h / 2 - 12, 5, 10);
-        
+
         this.ctx.restore();
     }
 
@@ -1212,12 +1343,14 @@ class Game {
             this.ctx.save();
             this.ctx.translate(-this.camera.x, -this.camera.y);
             if (this.track) this.track.draw(this.ctx);
-            
-            // Draw ghost car in time trials (before player car so it appears behind)
+
+            let ghostPos = null;
             if (this.gameMode === 'time_trials' && this.bestLapRecording && this.bestLapRecording.length > 0 && this.currentLapStartTime) {
+                ghostPos = this.getGhostPosition();
+                // Draw ghost car on main view (before player car so it appears behind)
                 this.drawGhostCar();
             }
-            
+
             this.cars.forEach(car => car.draw(this.ctx));
 
             // Driver label (number + name) above each car, aligned to screen
@@ -1253,7 +1386,12 @@ class Game {
             this.ctx.restore();
         }
         if (this.state === 'RACE' && this.minimap) {
-            this.minimap.render(this.cars, this.player);
+            // Pass ghost position to minimap so it can be drawn there as well
+            if (this.gameMode === 'time_trials' && this.bestLapRecording && this.bestLapRecording.length > 0 && this.currentLapStartTime) {
+                this.minimap.render(this.cars, this.player, this.getGhostPosition());
+            } else {
+                this.minimap.render(this.cars, this.player, null);
+            }
         }
     }
 }
