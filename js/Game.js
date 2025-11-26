@@ -399,6 +399,9 @@ class Game {
         this.lapHistory = []; // Reset lap history
         this.currentLapInvalid = false; // Track if current lap exceeded track limits
         this.offTrackTime = 0; // Cumulative time spent off track this lap (ms)
+        // Ghost car recording for time trials
+        this.currentLapRecording = []; // Array of {x, y, angle, time} for current lap
+        this.bestLapRecording = null; // Recording from best lap
         // Switch to race state
         this.state = 'RACE';
         this.lastTime = performance.now();
@@ -542,6 +545,17 @@ class Game {
                         this.currentLapInvalid = true;
                     }
                 }
+                
+                // Record player position for ghost car
+                if (this.currentLapStartTime !== null) {
+                    const elapsed = Date.now() - this.currentLapStartTime;
+                    this.currentLapRecording.push({
+                        x: this.player.x,
+                        y: this.player.y,
+                        angle: this.player.angle,
+                        time: elapsed
+                    });
+                }
             }
             
             if (this.player) {
@@ -622,6 +636,10 @@ class Game {
                             if (!lapWasInvalid && this.currentLapTime < this.bestLapTime) {
                                 this.bestLapTime = this.currentLapTime;
                                 this.lastLapWasPB = true;
+                                // Save the recording for ghost car (time trials only)
+                                if (this.gameMode === 'time_trials') {
+                                    this.bestLapRecording = [...this.currentLapRecording];
+                                }
                             } else {
                                 this.lastLapWasPB = false;
                             }
@@ -629,6 +647,7 @@ class Game {
                         this.currentLapStartTime = Date.now();
                         this.currentLapInvalid = false; // Reset for new lap
                         this.offTrackTime = 0; // Reset off-track time for new lap
+                        this.currentLapRecording = []; // Reset recording for new lap
                         // Only end race in race mode, time trials are unlimited
                         if (this.gameMode !== 'time_trials' && this.player.lap > this.track.laps) {
                             this.endRace();
@@ -895,6 +914,84 @@ class Game {
     }
 
     // ---------------------------------------------------------------------
+    // Ghost car rendering for time trials
+    // ---------------------------------------------------------------------
+    drawGhostCar() {
+        if (!this.bestLapRecording || this.bestLapRecording.length === 0) {
+            return;
+        }
+        
+        const elapsed = Date.now() - this.currentLapStartTime;
+        
+        // Find the position in the recording closest to current elapsed time
+        // Use interpolation for smoother ghost movement
+        let ghostPos = null;
+        for (let i = 0; i < this.bestLapRecording.length - 1; i++) {
+            const curr = this.bestLapRecording[i];
+            const next = this.bestLapRecording[i + 1];
+            if (elapsed >= curr.time && elapsed <= next.time) {
+                // Interpolate between current and next position
+                const t = (elapsed - curr.time) / (next.time - curr.time);
+                ghostPos = {
+                    x: curr.x + (next.x - curr.x) * t,
+                    y: curr.y + (next.y - curr.y) * t,
+                    angle: curr.angle + (next.angle - curr.angle) * t
+                };
+                break;
+            }
+        }
+        
+        // If before the first recording point, use first position
+        if (!ghostPos && elapsed < this.bestLapRecording[0].time) {
+            ghostPos = this.bestLapRecording[0];
+        }
+        
+        // If we've passed the end of the recording, use the last position
+        if (!ghostPos) {
+            ghostPos = this.bestLapRecording[this.bestLapRecording.length - 1];
+        }
+        
+        if (!ghostPos) return;
+        
+        // Draw ghost car with 40% opacity (more visible)
+        this.ctx.save();
+        this.ctx.globalAlpha = 0.4;
+        this.ctx.translate(ghostPos.x, ghostPos.y);
+        this.ctx.rotate(ghostPos.angle);
+        
+        // Ghost car body (purple/semi-transparent)
+        const w = 20;
+        const h = 40;
+        
+        this.ctx.fillStyle = '#a855f7'; // Purple ghost color
+        
+        // Main body
+        this.ctx.fillRect(-w / 2 + 2, -h / 2 + 10, w - 4, h - 15);
+        
+        // Nose cone
+        this.ctx.beginPath();
+        this.ctx.moveTo(-w / 4, -h / 2 + 10);
+        this.ctx.lineTo(0, -h / 2 - 5);
+        this.ctx.lineTo(w / 4, -h / 2 + 10);
+        this.ctx.fill();
+        
+        // Front wing
+        this.ctx.fillRect(-w / 2 - 2, -h / 2 - 5, w + 4, 5);
+        
+        // Rear wing
+        this.ctx.fillRect(-w / 2 - 2, h / 2 - 5, w + 4, 5);
+        
+        // Tires
+        this.ctx.fillStyle = 'rgba(50, 50, 50, 0.5)';
+        this.ctx.fillRect(-w / 2 - 4, -h / 2 + 2, 5, 10);
+        this.ctx.fillRect(w / 2 - 1, -h / 2 + 2, 5, 10);
+        this.ctx.fillRect(-w / 2 - 4, h / 2 - 12, 5, 10);
+        this.ctx.fillRect(w / 2 - 1, h / 2 - 12, 5, 10);
+        
+        this.ctx.restore();
+    }
+
+    // ---------------------------------------------------------------------
     // Rendering
     // ---------------------------------------------------------------------
     render() {
@@ -904,6 +1001,12 @@ class Game {
             this.ctx.save();
             this.ctx.translate(-this.camera.x, -this.camera.y);
             if (this.track) this.track.draw(this.ctx);
+            
+            // Draw ghost car in time trials (before player car so it appears behind)
+            if (this.gameMode === 'time_trials' && this.bestLapRecording && this.bestLapRecording.length > 0 && this.currentLapStartTime) {
+                this.drawGhostCar();
+            }
+            
             this.cars.forEach(car => car.draw(this.ctx));
 
             // Driver label (number + name) above each car, aligned to screen
