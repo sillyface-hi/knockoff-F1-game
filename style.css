@@ -456,6 +456,32 @@ h1 {
     font-variant-numeric: tabular-nums;
 }
 
+.save-times-hint {
+    font-size: 0.8rem;
+    opacity: 0.7;
+    margin-top: 0.25rem;
+}
+
+.share-name-block {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.share-name-input {
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    border: 1px solid var(--glass-border);
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    font-family: var(--font-main);
+}
+
+.share-name-input.invalid {
+    border-color: #ef4444;
+}
+
 .position-box,
 .lap-box {
     background: var(--glass-bg);
@@ -627,6 +653,18 @@ h1 {
 
 .result-row .team {
     font-size: 1.5rem;
+}
+
+/* Leaderboard */
+.leaderboard-list {
+    width: 100%;
+    max-width: 600px;
+    margin: 20px 0;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 10px;
+    padding: 20px;
+    max-height: 60vh;
+    overflow-y: auto;
 }
 
 /* Minimap */

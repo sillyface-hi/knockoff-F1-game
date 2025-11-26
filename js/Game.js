@@ -19,7 +19,9 @@ class Game {
         this.player = null;
         this.selectedDriverId = null;
         this.selectedTire = 'SOFT';
-        this.gameMode = 'race'; // 'race' or 'time_trials'
+        this.gameMode = 'race'; // 'race', 'time_trials', or 'leaderboard'
+        this.sharePromptOpen = false;
+        this.saveKeyHandled = false;
 
         // Minimap
         this.minimap = null;
@@ -76,6 +78,14 @@ class Game {
                 this.showTrackSelection();
             });
         }
+        const leaderboardBtn = document.getElementById('leaderboard-btn');
+        if (leaderboardBtn) {
+            leaderboardBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.gameMode = 'leaderboard';
+                this.showTrackSelection();
+            });
+        }
         const restartBtn = document.getElementById('restart-btn');
         if (restartBtn) {
             restartBtn.addEventListener('click', () => {
@@ -127,6 +137,21 @@ class Game {
             tyreMainBtn.addEventListener('click', () => {
                 if (window.MenuSound) MenuSound.playClick();
                 this.goToMainMenu();
+            });
+        }
+
+        const shareCancelBtn = document.getElementById('share-cancel-btn');
+        if (shareCancelBtn) {
+            shareCancelBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.hideShareTimePrompt();
+            });
+        }
+        const shareOkBtn = document.getElementById('share-ok-btn');
+        if (shareOkBtn) {
+            shareOkBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.confirmShareTime();
             });
         }
     }
@@ -181,10 +206,12 @@ class Game {
         const trackSelect = document.getElementById('track-selection');
         const driverSelect = document.getElementById('driver-selection');
         const tyreSelect = document.getElementById('tyre-selection');
+        const leaderboardScreen = document.getElementById('leaderboard-screen');
+        const shareScreen = document.getElementById('share-time-screen');
         const hud = document.getElementById('hud');
         const results = document.getElementById('results-screen');
 
-        [trackSelect, driverSelect, tyreSelect, hud, results].forEach(el => {
+        [trackSelect, driverSelect, tyreSelect, leaderboardScreen, shareScreen, hud, results].forEach(el => {
             if (!el) return;
             el.classList.remove('active');
             el.classList.add('hidden');
@@ -201,6 +228,9 @@ class Game {
         this.player = null;
         this.selectedDriverId = null;
         this.selectedTire = 'SOFT';
+        this.gameMode = 'race';
+        this.sharePromptOpen = false;
+        this.saveKeyHandled = false;
     }
 
     showTrackSelection() {
@@ -221,13 +251,19 @@ class Game {
             window.TRACKS.forEach(track => {
                 const card = document.createElement('div');
                 card.className = 'track-card';
-                // In time trials, don't show lap count
-                if (this.gameMode === 'time_trials') {
+                // In time trials and leaderboard, don't show lap count
+                if (this.gameMode === 'time_trials' || this.gameMode === 'leaderboard') {
                     card.innerHTML = `<h3>${track.name}</h3>`;
                 } else {
                     card.innerHTML = `<h3>${track.name}</h3><p>${track.laps} Laps</p>`;
                 }
-                card.addEventListener('click', () => this.loadTrack(track));
+                card.addEventListener('click', () => {
+                    if (this.gameMode === 'leaderboard') {
+                        this.showLeaderboardForTrack(track);
+                    } else {
+                        this.loadTrack(track);
+                    }
+                });
                 trackList.appendChild(card);
             });
         }
@@ -535,7 +571,7 @@ class Game {
                 const raceActive = this.raceStarted;
                 car.update(this.input, deltaTime, this.track, this.cars, this.weather, raceActive);
             });
-            
+
             // Check track limits for time trials
             if (this.gameMode === 'time_trials' && this.player && this.track && this.raceStarted) {
                 if (!this.track.isOnTrack(this.player.x, this.player.y)) {
@@ -557,7 +593,19 @@ class Game {
                     });
                 }
             }
-            
+
+            // Handle Save (S) key in time trials to open share prompt
+            if (this.gameMode === 'time_trials' && this.input && this.input.keys) {
+                if (this.input.keys.S) {
+                    if (!this.saveKeyHandled && !this.sharePromptOpen && this.bestLapTime !== Infinity) {
+                        this.showShareTimePrompt();
+                        this.saveKeyHandled = true;
+                    }
+                } else {
+                    this.saveKeyHandled = false;
+                }
+            }
+
             if (this.player) {
                 this.camera.x = this.player.x - this.width / 2;
                 this.camera.y = this.player.y - this.height / 2;
@@ -730,12 +778,175 @@ class Game {
             }
         }
     }
-    
+
     formatTime(ms) {
         const m = Math.floor(ms / 60000);
         const s = Math.floor((ms % 60000) / 1000);
         const millis = Math.floor(ms % 1000);
         return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${millis.toString().padStart(3, '0')}`;
+    }
+
+    showShareTimePrompt() {
+        if (this.bestLapTime === Infinity) return;
+        const shareScreen = document.getElementById('share-time-screen');
+        const nameInput = document.getElementById('share-name-input');
+        if (shareScreen) {
+            shareScreen.classList.remove('hidden');
+            shareScreen.classList.add('active');
+            this.sharePromptOpen = true;
+        }
+        if (nameInput) {
+            nameInput.classList.remove('invalid');
+            // Clear for fresh entry each time
+            nameInput.value = '';
+        }
+    }
+
+    hideShareTimePrompt() {
+        const shareScreen = document.getElementById('share-time-screen');
+        if (shareScreen) {
+            shareScreen.classList.remove('active');
+            shareScreen.classList.add('hidden');
+        }
+        this.sharePromptOpen = false;
+    }
+
+    confirmShareTime() {
+        if (this.bestLapTime === Infinity || !this.track || !this.player) {
+            this.hideShareTimePrompt();
+            return;
+        }
+        const nameInput = document.getElementById('share-name-input');
+        let username = nameInput && nameInput.value ? nameInput.value.trim() : '';
+        if (!username || username.length < 2) {
+            if (nameInput) nameInput.classList.add('invalid');
+            return; // require at least 2 letters
+        }
+        if (nameInput) nameInput.classList.remove('invalid');
+
+        this.saveTimeTrialResult(this.track, this.player, this.bestLapTime, username);
+        this.hideShareTimePrompt();
+    }
+
+    // ---------------------------------------------------------------------
+    // Time Trial Leaderboard persistence
+    // ---------------------------------------------------------------------
+    saveTimeTrialResult(track, player, timeMs, username) {
+        if (!track || !track.id || !player) return;
+        const storageKey = 'f1_2026_leaderboards_v1';
+        let data = {};
+        try {
+            const raw = localStorage.getItem(storageKey);
+            if (raw) data = JSON.parse(raw) || {};
+        } catch (e) {
+            console.warn('Failed to read leaderboards from storage', e);
+        }
+
+        if (!data[track.id]) data[track.id] = {};
+
+        const nameKey = username || player.driverName || 'Player';
+        const existing = data[track.id][nameKey];
+        if (!existing || timeMs < existing.timeMs) {
+            data[track.id][nameKey] = {
+                username: nameKey,
+                driverName: player.driverName || null,
+                timeMs: timeMs,
+                teamId: player.teamId || null,
+                color: player.color || '#ffffff'
+            };
+        }
+
+        try {
+            localStorage.setItem(storageKey, JSON.stringify(data));
+        } catch (e) {
+            console.warn('Failed to save leaderboards to storage', e);
+        }
+    }
+
+    loadLeaderboardEntries(trackId) {
+        const storageKey = 'f1_2026_leaderboards_v1';
+        try {
+            const raw = localStorage.getItem(storageKey);
+            if (!raw) return [];
+            const data = JSON.parse(raw) || {};
+            const trackBoard = data[trackId] || {};
+            return Object.values(trackBoard).sort((a, b) => a.timeMs - b.timeMs);
+        } catch (e) {
+            console.warn('Failed to load leaderboards', e);
+            return [];
+        }
+    }
+
+    showLeaderboardForTrack(trackData) {
+        const trackSelect = document.getElementById('track-selection');
+        const leaderboardScreen = document.getElementById('leaderboard-screen');
+        const nameEl = document.getElementById('leaderboard-track-name');
+        const listEl = document.getElementById('leaderboard-list');
+
+        if (trackSelect) {
+            trackSelect.classList.remove('active');
+            trackSelect.classList.add('hidden');
+        }
+        if (leaderboardScreen) {
+            leaderboardScreen.classList.remove('hidden');
+            leaderboardScreen.classList.add('active');
+        }
+
+        if (nameEl) {
+            nameEl.textContent = trackData.name || 'Unknown Track';
+        }
+
+        if (listEl) {
+            const entries = this.loadLeaderboardEntries(trackData.id);
+            if (!entries.length) {
+                listEl.innerHTML = `<div class="result-row"><span class="name">No time trial results yet for this track.</span></div>`;
+            } else {
+                listEl.innerHTML = '';
+                entries.forEach((entry, index) => {
+                    const row = document.createElement('div');
+                    row.className = 'result-row';
+                    const timeStr = this.formatTime(entry.timeMs);
+                    const displayName = entry.username || entry.driverName || 'Player';
+                    row.innerHTML = `
+                        <span class="pos">${index + 1}</span>
+                        <span class="name">${displayName}</span>
+                        <span class="team" style="color:${entry.color || '#ffffff'}">■</span>
+                        <span class="time">${timeStr}</span>
+                    `;
+                    listEl.appendChild(row);
+                });
+            }
+        }
+
+        // Wire up leaderboard back buttons (once)
+        const backBtn = document.getElementById('leaderboard-back-btn');
+        if (backBtn && !backBtn._handlerAttached) {
+            backBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                // Return to track selection in leaderboard mode
+                const lbScreen = document.getElementById('leaderboard-screen');
+                const ts = document.getElementById('track-selection');
+                if (lbScreen) {
+                    lbScreen.classList.remove('active');
+                    lbScreen.classList.add('hidden');
+                }
+                if (ts) {
+                    ts.classList.remove('hidden');
+                    ts.classList.add('active');
+                    this.state = 'TRACK_SELECT';
+                }
+            });
+            backBtn._handlerAttached = true;
+        }
+
+        const mainBtn = document.getElementById('leaderboard-main-btn');
+        if (mainBtn && !mainBtn._handlerAttached) {
+            mainBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.goToMainMenu();
+            });
+            mainBtn._handlerAttached = true;
+        }
     }
 
     // ---------------------------------------------------------------------
