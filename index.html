@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>F1 2026 Racing</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -150,6 +150,28 @@
                 <!-- Minimap -->
                 <div id="minimap-container">
                     <canvas id="minimap"></canvas>
+                </div>
+
+                <!-- Mobile Touch Controls -->
+                <div id="touch-controls" class="touch-controls">
+                    <!-- Steering zone (left side) -->
+                    <div class="touch-steering">
+                        <div id="steer-left" class="steer-zone steer-left">
+                            <span class="steer-arrow">◀</span>
+                        </div>
+                        <div id="steer-right" class="steer-zone steer-right">
+                            <span class="steer-arrow">▶</span>
+                        </div>
+                    </div>
+                    <!-- Pedals (right side) -->
+                    <div class="touch-pedals">
+                        <div id="pedal-gas" class="pedal pedal-gas">
+                            <span class="pedal-label">GAS</span>
+                        </div>
+                        <div id="pedal-brake" class="pedal pedal-brake">
+                            <span class="pedal-label">BRAKE</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 

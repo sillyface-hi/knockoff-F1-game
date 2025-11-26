@@ -11,6 +11,10 @@ class Game {
         // Game state
         this.state = 'MENU'; // MENU, TRACK_SELECT, DRIVER_SELECT, TYRE_SELECT, RACE, FINISHED
         this.camera = { x: 0, y: 0 };
+        // Zoom level (1 = normal, < 1 = zoomed out)
+        // Detect mobile/touch devices and zoom out more
+        const isMobile = this.isTouchDevice();
+        this.cameraZoom = isMobile ? 0.6 : 1.0;
         this.lastTime = 0;
 
         // Track placeholder – will be replaced when a track is loaded
@@ -913,8 +917,13 @@ class Game {
             // Send ready signal to opponent
             console.log('[Game] Sending ready signal');
             this.multiplayer.sendReady();
+        } else if (this.gameMode === 'time_trials') {
+            // Time trials: skip start lights, player can go immediately
+            this.raceStarted = true;
+            this.raceStartTime = performance.now();
+            this.currentLapStartTime = this.raceStartTime;
         } else {
-            // Non-multiplayer: start lights immediately
+            // Race mode: start lights sequence
             this.startSequenceStart = performance.now();
         }
         
@@ -1170,8 +1179,12 @@ class Game {
             }
 
             if (this.player) {
-                this.camera.x = this.player.x - this.width / 2;
-                this.camera.y = this.player.y - this.height / 2;
+                // Adjust camera position to account for zoom
+                // When zoomed out, we see more area, so offset needs adjustment
+                const effectiveWidth = this.width / this.cameraZoom;
+                const effectiveHeight = this.height / this.cameraZoom;
+                this.camera.x = this.player.x - effectiveWidth / 2;
+                this.camera.y = this.player.y - effectiveHeight / 2;
                 this.updateHUD();
             }
         }
@@ -1599,8 +1612,12 @@ class Game {
         // Update start lights UI
         const lightsContainer = document.getElementById('start-lights');
         if (lightsContainer) {
+            // Hide lights in time trials (no start sequence)
+            if (this.gameMode === 'time_trials') {
+                lightsContainer.style.display = 'none';
+            }
             // Hide lights when waiting for opponent in multiplayer
-            if (this.gameMode === 'multiplayer' && this.waitingForOpponent) {
+            else if (this.gameMode === 'multiplayer' && this.waitingForOpponent) {
                 lightsContainer.style.display = 'none';
             }
             // Hide the entire start light rig 5 seconds after race start
@@ -1775,6 +1792,22 @@ class Game {
     }
 
     // ---------------------------------------------------------------------
+    // Device detection
+    // ---------------------------------------------------------------------
+    isTouchDevice() {
+        // Check for touch capability
+        const hasTouch = ('ontouchstart' in window) || 
+               (navigator.maxTouchPoints > 0) || 
+               (navigator.msMaxTouchPoints > 0) ||
+               (window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+        
+        // Also consider small screens as mobile (fallback)
+        const isSmallScreen = window.innerWidth <= 900 || window.innerHeight <= 600;
+        
+        return hasTouch || isSmallScreen;
+    }
+
+    // ---------------------------------------------------------------------
     // Rendering
     // ---------------------------------------------------------------------
     render() {
@@ -1782,6 +1815,8 @@ class Game {
         this.ctx.fillRect(0, 0, this.width, this.height);
         if (this.state === 'RACE') {
             this.ctx.save();
+            // Apply zoom (scale from top-left, then translate)
+            this.ctx.scale(this.cameraZoom, this.cameraZoom);
             this.ctx.translate(-this.camera.x, -this.camera.y);
             if (this.track) this.track.draw(this.ctx);
 
@@ -1822,7 +1857,9 @@ class Game {
             if (this.debugStart && this.track) this.track.drawDebugStart(this.ctx);
             if (this.weather === 'RAIN') {
                 this.ctx.fillStyle = 'rgba(200,200,255,0.1)';
-                this.ctx.fillRect(this.camera.x, this.camera.y, this.width, this.height);
+                const effectiveWidth = this.width / this.cameraZoom;
+                const effectiveHeight = this.height / this.cameraZoom;
+                this.ctx.fillRect(this.camera.x, this.camera.y, effectiveWidth, effectiveHeight);
             }
             this.ctx.restore();
         }

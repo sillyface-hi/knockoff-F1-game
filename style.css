@@ -835,3 +835,520 @@ h1 {
     50% { opacity: 1; }
     100% { opacity: 0; }
 }
+
+/* ==================== Mobile Menu Responsive Styles ==================== */
+@media (max-width: 600px) {
+    /* Main Menu Title */
+    h1 {
+        font-size: 2.2rem;
+        margin-bottom: 1.5rem;
+        text-align: center;
+        padding: 0 1rem;
+    }
+    
+    h2 {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Buttons */
+    .btn-primary,
+    .btn-secondary {
+        padding: 0.8rem 1.5rem;
+        font-size: 1rem;
+        width: 100%;
+        max-width: 280px;
+    }
+    
+    .menu-options {
+        flex-direction: column;
+        gap: 0.8rem;
+        width: 100%;
+        padding: 0 2rem;
+        align-items: center;
+    }
+    
+    .menu-actions {
+        flex-direction: column;
+        gap: 0.6rem;
+        width: 100%;
+        padding: 0 1rem;
+        align-items: center;
+    }
+    
+    /* Screen content */
+    .screen {
+        padding: 1rem;
+        overflow-y: auto;
+    }
+    
+    .menu-content {
+        width: 100%;
+        padding: 0 0.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    /* Track Selection */
+    .track-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        margin-top: 15px;
+        max-height: 55vh;
+        padding: 5px;
+        width: 100%;
+    }
+    
+    .track-card {
+        padding: 12px 15px;
+    }
+    
+    .track-card h3 {
+        font-size: 1.1rem;
+        margin-bottom: 4px;
+    }
+    
+    .track-card p {
+        font-size: 0.8rem;
+    }
+    
+    /* Driver Selection */
+    .driver-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 15px;
+        max-height: 55vh;
+        padding: 5px;
+        width: 100%;
+    }
+    
+    .driver-card {
+        padding: 10px 12px;
+    }
+    
+    .driver-card .driver-name {
+        font-size: 0.95rem;
+    }
+    
+    .driver-card .driver-team {
+        font-size: 0.75rem;
+    }
+    
+    .driver-card .driver-number {
+        font-size: 0.8rem;
+    }
+    
+    /* Tyre Selection */
+    .tyre-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        margin-top: 15px;
+        max-height: 50vh;
+        padding: 5px;
+        width: 100%;
+    }
+    
+    .tyre-card {
+        padding: 12px 14px;
+    }
+    
+    .tyre-circle {
+        width: 38px;
+        height: 38px;
+        font-size: 0.9rem;
+    }
+    
+    .tyre-label {
+        font-size: 1rem;
+    }
+    
+    .tyre-description {
+        font-size: 0.75rem;
+    }
+    
+    /* Multiplayer screens */
+    .room-code {
+        font-size: 2rem;
+        letter-spacing: 0.3rem;
+        padding: 0.8rem 1.2rem;
+    }
+    
+    .room-hint {
+        font-size: 0.8rem;
+    }
+    
+    .code-input {
+        font-size: 1.8rem;
+        letter-spacing: 0.3rem;
+        padding: 0.8rem 1rem;
+        width: 220px;
+    }
+    
+    .lobby-options {
+        width: 100%;
+        padding: 0 2rem;
+        align-items: center;
+    }
+    
+    .connection-status {
+        font-size: 0.9rem;
+        padding: 0 1rem;
+        text-align: center;
+    }
+    
+    .waiting-message p {
+        font-size: 1rem;
+    }
+    
+    /* Results screen */
+    #results-list {
+        padding: 10px;
+        margin: 10px 0;
+    }
+    
+    .result-row {
+        padding: 8px;
+        font-size: 1rem;
+    }
+    
+    /* Leaderboard */
+    .leaderboard-list {
+        padding: 10px;
+        margin: 10px 0;
+    }
+    
+    /* Share time screen */
+    .share-name-input {
+        width: 100%;
+        max-width: 250px;
+    }
+}
+
+/* Extra small screens (very narrow phones) */
+@media (max-width: 380px) {
+    h1 {
+        font-size: 1.8rem;
+    }
+    
+    .btn-primary,
+    .btn-secondary {
+        padding: 0.7rem 1.2rem;
+        font-size: 0.9rem;
+    }
+    
+    .driver-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .room-code {
+        font-size: 1.6rem;
+    }
+    
+    .code-input {
+        font-size: 1.5rem;
+        width: 200px;
+    }
+}
+
+/* Landscape phone orientation for menus */
+@media (max-height: 500px) and (orientation: landscape) {
+    h1 {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+    }
+    
+    h2 {
+        font-size: 1.3rem;
+    }
+    
+    .menu-options {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+    
+    .btn-primary,
+    .btn-secondary {
+        padding: 0.6rem 1.2rem;
+        font-size: 0.9rem;
+        width: auto;
+    }
+    
+    .track-grid,
+    .driver-grid,
+    .tyre-grid {
+        max-height: 45vh;
+    }
+    
+    .driver-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* ==================== Mobile Touch Controls ==================== */
+.touch-controls {
+    display: none; /* Hidden by default, shown on touch devices */
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40%;
+    pointer-events: auto;
+    z-index: 100;
+}
+
+/* Show on touch devices */
+@media (hover: none) and (pointer: coarse) {
+    .touch-controls {
+        display: flex;
+        justify-content: space-between;
+    }
+    
+    /* Adjust HUD for mobile */
+    #hud {
+        padding: 0.5rem;
+    }
+    
+    .hud-top {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .position-box,
+    .lap-box {
+        padding: 0.5rem 0.8rem;
+    }
+    
+    .position-box .value,
+    .lap-box .value {
+        font-size: 1.5rem;
+    }
+    
+    .position-box .total,
+    .lap-box .total {
+        font-size: 0.9rem;
+    }
+    
+    .position-box .label,
+    .lap-box .label {
+        font-size: 0.65rem;
+    }
+    
+    .telemetry {
+        gap: 0.5rem;
+    }
+    
+    .speed-box {
+        padding: 0.5rem 0.8rem;
+    }
+    
+    .speed-box .value {
+        font-size: 1.5rem;
+    }
+    
+    .gear-box {
+        width: 40px;
+        height: 40px;
+        font-size: 1.3rem;
+    }
+    
+    #tire-icon {
+        width: 35px;
+        height: 35px;
+        font-size: 0.8rem;
+    }
+    
+    #tire-wear-bar {
+        height: 35px;
+        width: 8px;
+    }
+    
+    /* Minimap smaller on mobile */
+    #minimap-container {
+        top: 10px;
+        right: 10px;
+        padding: 5px;
+    }
+    
+    #minimap {
+        width: 100px;
+        height: 100px;
+    }
+    
+    /* Lap times panel - move above touch controls */
+    .lap-times-panel {
+        bottom: auto;
+        top: 70px;
+        left: 10px;
+        width: 160px;
+        padding: 0.5rem;
+        transform: none;
+    }
+    
+    .lap-history-row {
+        font-size: 0.85rem;
+    }
+    
+    .lap-history-row .lap-num {
+        font-size: 0.75rem;
+        min-width: 40px;
+    }
+    
+    .current-lap .lap-time-value {
+        font-size: 1.3rem;
+    }
+    
+    .current-lap .label {
+        font-size: 0.65rem;
+    }
+    
+    .save-times-hint {
+        display: none;
+    }
+    
+    .pause-indicator {
+        display: none;
+    }
+    
+    /* Start lights smaller */
+    .start-lights {
+        top: 12%;
+        gap: 8px;
+    }
+    
+    .start-light {
+        width: 16px;
+        height: 16px;
+    }
+}
+
+/* Steering zones (left side) */
+.touch-steering {
+    display: flex;
+    width: 45%;
+    height: 100%;
+}
+
+.steer-zone {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: background 0.1s;
+}
+
+.steer-left {
+    border-radius: 20px 0 0 0;
+}
+
+.steer-right {
+    border-radius: 0 20px 0 0;
+}
+
+.steer-zone.active {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.steer-arrow {
+    font-size: 3rem;
+    color: rgba(255, 255, 255, 0.4);
+    pointer-events: none;
+}
+
+.steer-zone.active .steer-arrow {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Pedals (right side) */
+.touch-pedals {
+    display: flex;
+    flex-direction: column;
+    width: 30%;
+    height: 100%;
+    gap: 4px;
+}
+
+.pedal {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 12px;
+    transition: all 0.1s;
+    border: 2px solid transparent;
+}
+
+.pedal-gas {
+    background: rgba(34, 197, 94, 0.3);
+    border-color: rgba(34, 197, 94, 0.5);
+}
+
+.pedal-gas.active {
+    background: rgba(34, 197, 94, 0.6);
+    border-color: rgba(34, 197, 94, 0.9);
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.5);
+}
+
+.pedal-brake {
+    background: rgba(239, 68, 68, 0.3);
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+.pedal-brake.active {
+    background: rgba(239, 68, 68, 0.6);
+    border-color: rgba(239, 68, 68, 0.9);
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+}
+
+.pedal-label {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.7);
+    pointer-events: none;
+    letter-spacing: 2px;
+}
+
+.pedal.active .pedal-label {
+    color: rgba(255, 255, 255, 1);
+}
+
+/* Landscape orientation adjustments for touch devices */
+@media (orientation: landscape) and (hover: none) and (pointer: coarse) {
+    .touch-controls {
+        height: 45%;
+    }
+    
+    .lap-times-panel {
+        top: auto;
+        bottom: 47%;
+        left: 10px;
+    }
+    
+    #minimap-container {
+        top: 5px;
+        right: 5px;
+    }
+    
+    #minimap {
+        width: 80px;
+        height: 80px;
+    }
+    
+    .hud-top {
+        gap: 5px;
+    }
+}
+
+/* Portrait orientation for touch devices */
+@media (orientation: portrait) and (hover: none) and (pointer: coarse) {
+    .touch-controls {
+        height: 35%;
+    }
+    
+    .lap-times-panel {
+        top: auto;
+        bottom: 37%;
+    }
+}
