@@ -1013,8 +1013,8 @@ class Game {
         if (this.weatherMode === 'custom') {
             this.applyCustomWeather();
         } else {
-            // Regular mode: reset weather system for fresh dynamic weather
-            this.weatherSystem = new Weather();
+            // Regular mode: use historical weather data for this track
+            this.weatherSystem = new Weather(this.track.id);
         }
         
         // Reset lap timing for a fresh race

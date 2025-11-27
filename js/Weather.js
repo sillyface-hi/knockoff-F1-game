@@ -1,13 +1,171 @@
 /**
  * Weather System - Dynamic weather cycle for F1 racing
+ * Based on historical weather data from real F1 races
  * Manages weather transitions between SUNNY, CLOUDY, LIGHT_RAIN, and HEAVY_RAIN
  */
+
+// Historical weather data from real F1 races
+// Each track has multiple race scenarios based on actual past races
+const HISTORICAL_WEATHER = {
+    // Monza - Generally dry, occasional drama
+    'monza': {
+        name: 'Monza',
+        scenarios: [
+            { name: '2023 Dry', sequence: ['SUNNY', 'SUNNY', 'SUNNY', 'CLOUDY', 'SUNNY'] },
+            { name: '2022 Dry', sequence: ['SUNNY', 'SUNNY', 'SUNNY', 'SUNNY', 'SUNNY'] },
+            { name: '2017 Qualifying Rain', sequence: ['CLOUDY', 'LIGHT_RAIN', 'HEAVY_RAIN', 'LIGHT_RAIN', 'CLOUDY'] },
+            { name: '2020 Dry Hot', sequence: ['SUNNY', 'SUNNY', 'SUNNY', 'SUNNY', 'SUNNY'] }
+        ]
+    },
+    // Silverstone - Famous for unpredictable British weather
+    'silverstone': {
+        name: 'Silverstone',
+        scenarios: [
+            { name: '2023 Dry', sequence: ['CLOUDY', 'SUNNY', 'SUNNY', 'CLOUDY', 'SUNNY'] },
+            { name: '2022 Dry Hot', sequence: ['SUNNY', 'SUNNY', 'SUNNY', 'SUNNY', 'SUNNY'] },
+            { name: '2021 Sprint Rain', sequence: ['SUNNY', 'CLOUDY', 'LIGHT_RAIN', 'CLOUDY', 'SUNNY'] },
+            { name: '2020 Late Rain', sequence: ['SUNNY', 'SUNNY', 'CLOUDY', 'LIGHT_RAIN', 'LIGHT_RAIN'] },
+            { name: '2019 Changeable', sequence: ['CLOUDY', 'LIGHT_RAIN', 'CLOUDY', 'SUNNY', 'CLOUDY'] },
+            { name: '2015 Wet Start', sequence: ['LIGHT_RAIN', 'CLOUDY', 'SUNNY', 'SUNNY', 'CLOUDY'] }
+        ]
+    },
+    // Spa - Infamous for localized rain and unpredictable conditions
+    'spa': {
+        name: 'Spa-Francorchamps',
+        scenarios: [
+            { name: '2023 Dry', sequence: ['CLOUDY', 'SUNNY', 'SUNNY', 'CLOUDY', 'SUNNY'] },
+            { name: '2022 Dry', sequence: ['SUNNY', 'SUNNY', 'SUNNY', 'CLOUDY', 'SUNNY'] },
+            { name: '2021 Red Flag Monsoon', sequence: ['HEAVY_RAIN', 'HEAVY_RAIN', 'HEAVY_RAIN', 'HEAVY_RAIN', 'LIGHT_RAIN'] },
+            { name: '2019 Changeable', sequence: ['CLOUDY', 'LIGHT_RAIN', 'SUNNY', 'CLOUDY', 'LIGHT_RAIN'] },
+            { name: '2018 Thunderstorm', sequence: ['SUNNY', 'CLOUDY', 'HEAVY_RAIN', 'LIGHT_RAIN', 'CLOUDY'] },
+            { name: '2008 Chaos', sequence: ['LIGHT_RAIN', 'HEAVY_RAIN', 'LIGHT_RAIN', 'HEAVY_RAIN', 'CLOUDY'] }
+        ]
+    },
+    // Monaco - Usually dry Mediterranean weather
+    'monaco': {
+        name: 'Monaco',
+        scenarios: [
+            { name: '2023 Dry', sequence: ['SUNNY', 'SUNNY', 'SUNNY', 'SUNNY', 'SUNNY'] },
+            { name: '2022 Wet Start Drama', sequence: ['HEAVY_RAIN', 'LIGHT_RAIN', 'CLOUDY', 'SUNNY', 'SUNNY'] },
+            { name: '2021 Dry', sequence: ['SUNNY', 'SUNNY', 'CLOUDY', 'SUNNY', 'SUNNY'] },
+            { name: '2016 Wet Race', sequence: ['LIGHT_RAIN', 'HEAVY_RAIN', 'LIGHT_RAIN', 'CLOUDY', 'SUNNY'] },
+            { name: '2008 Hamilton Magic', sequence: ['CLOUDY', 'LIGHT_RAIN', 'HEAVY_RAIN', 'LIGHT_RAIN', 'CLOUDY'] }
+        ]
+    },
+    // Suzuka - Can be affected by typhoons
+    'suzuka': {
+        name: 'Suzuka',
+        scenarios: [
+            { name: '2023 Dry', sequence: ['SUNNY', 'SUNNY', 'CLOUDY', 'SUNNY', 'SUNNY'] },
+            { name: '2022 Typhoon Aftermath', sequence: ['HEAVY_RAIN', 'LIGHT_RAIN', 'CLOUDY', 'SUNNY', 'SUNNY'] },
+            { name: '2019 Typhoon Delay', sequence: ['CLOUDY', 'HEAVY_RAIN', 'HEAVY_RAIN', 'LIGHT_RAIN', 'CLOUDY'] },
+            { name: '2014 Bianchi Tragedy', sequence: ['LIGHT_RAIN', 'HEAVY_RAIN', 'HEAVY_RAIN', 'LIGHT_RAIN', 'CLOUDY'] },
+            { name: '2018 Dry', sequence: ['SUNNY', 'SUNNY', 'SUNNY', 'CLOUDY', 'SUNNY'] }
+        ]
+    },
+    // Interlagos - Famous for dramatic rain races
+    'interlagos': {
+        name: 'Interlagos',
+        scenarios: [
+            { name: '2023 Dry', sequence: ['SUNNY', 'CLOUDY', 'SUNNY', 'SUNNY', 'SUNNY'] },
+            { name: '2022 Dry', sequence: ['SUNNY', 'SUNNY', 'SUNNY', 'CLOUDY', 'SUNNY'] },
+            { name: '2019 Chaos Race', sequence: ['CLOUDY', 'LIGHT_RAIN', 'SUNNY', 'CLOUDY', 'LIGHT_RAIN'] },
+            { name: '2016 Epic Wet Race', sequence: ['LIGHT_RAIN', 'HEAVY_RAIN', 'HEAVY_RAIN', 'LIGHT_RAIN', 'CLOUDY'] },
+            { name: '2012 Championship Decider', sequence: ['CLOUDY', 'LIGHT_RAIN', 'HEAVY_RAIN', 'LIGHT_RAIN', 'SUNNY'] },
+            { name: '2008 Hamilton Title', sequence: ['SUNNY', 'CLOUDY', 'LIGHT_RAIN', 'HEAVY_RAIN', 'LIGHT_RAIN'] },
+            { name: '2003 Fisichella Win', sequence: ['HEAVY_RAIN', 'HEAVY_RAIN', 'LIGHT_RAIN', 'CLOUDY', 'SUNNY'] }
+        ]
+    },
+    // COTA Austin - Usually dry Texas weather
+    'austin': {
+        name: 'COTA',
+        scenarios: [
+            { name: '2023 Dry', sequence: ['SUNNY', 'SUNNY', 'SUNNY', 'SUNNY', 'SUNNY'] },
+            { name: '2022 Dry Hot', sequence: ['SUNNY', 'SUNNY', 'SUNNY', 'SUNNY', 'SUNNY'] },
+            { name: '2018 Wet Qualifying', sequence: ['SUNNY', 'CLOUDY', 'LIGHT_RAIN', 'CLOUDY', 'SUNNY'] },
+            { name: '2015 Wet Race', sequence: ['CLOUDY', 'HEAVY_RAIN', 'LIGHT_RAIN', 'CLOUDY', 'SUNNY'] }
+        ]
+    },
+    // Australia Melbourne - Variable spring weather
+    'australia': {
+        name: 'Australia',
+        scenarios: [
+            { name: '2023 Dry', sequence: ['SUNNY', 'SUNNY', 'SUNNY', 'CLOUDY', 'SUNNY'] },
+            { name: '2022 Dry', sequence: ['SUNNY', 'SUNNY', 'SUNNY', 'SUNNY', 'SUNNY'] },
+            { name: '2018 Dry', sequence: ['SUNNY', 'CLOUDY', 'SUNNY', 'SUNNY', 'SUNNY'] },
+            { name: '2013 Dry', sequence: ['SUNNY', 'SUNNY', 'SUNNY', 'SUNNY', 'SUNNY'] }
+        ]
+    },
+    // Bahrain - Desert, always dry
+    'bahrain': {
+        name: 'Bahrain',
+        scenarios: [
+            { name: 'Typical Dry Night', sequence: ['SUNNY', 'SUNNY', 'SUNNY', 'SUNNY', 'SUNNY'] },
+            { name: 'Desert Clear', sequence: ['SUNNY', 'SUNNY', 'SUNNY', 'SUNNY', 'SUNNY'] }
+        ]
+    },
+    // Singapore - Can have tropical storms
+    'singapore': {
+        name: 'Singapore',
+        scenarios: [
+            { name: '2023 Dry', sequence: ['CLOUDY', 'CLOUDY', 'SUNNY', 'CLOUDY', 'CLOUDY'] },
+            { name: '2022 Dry Humid', sequence: ['CLOUDY', 'SUNNY', 'CLOUDY', 'CLOUDY', 'SUNNY'] },
+            { name: '2017 Wet Start', sequence: ['LIGHT_RAIN', 'CLOUDY', 'SUNNY', 'CLOUDY', 'SUNNY'] }
+        ]
+    },
+    // Zandvoort Netherlands - Coastal weather
+    'netherlands': {
+        name: 'Netherlands',
+        scenarios: [
+            { name: '2023 Dry', sequence: ['SUNNY', 'SUNNY', 'SUNNY', 'CLOUDY', 'SUNNY'] },
+            { name: '2022 Dry', sequence: ['SUNNY', 'SUNNY', 'SUNNY', 'SUNNY', 'SUNNY'] },
+            { name: '2021 Dry', sequence: ['SUNNY', 'CLOUDY', 'SUNNY', 'SUNNY', 'SUNNY'] }
+        ]
+    },
+    // Hungary - Hot and can have summer storms
+    'hungary': {
+        name: 'Hungary',
+        scenarios: [
+            { name: '2023 Dry Hot', sequence: ['SUNNY', 'SUNNY', 'SUNNY', 'SUNNY', 'SUNNY'] },
+            { name: '2022 Dry', sequence: ['SUNNY', 'SUNNY', 'CLOUDY', 'SUNNY', 'SUNNY'] },
+            { name: '2021 Chaos Start', sequence: ['HEAVY_RAIN', 'LIGHT_RAIN', 'CLOUDY', 'SUNNY', 'SUNNY'] },
+            { name: '2014 Dry', sequence: ['SUNNY', 'SUNNY', 'SUNNY', 'SUNNY', 'SUNNY'] }
+        ]
+    },
+    // Canada Montreal - Variable weather
+    'canada': {
+        name: 'Canada',
+        scenarios: [
+            { name: '2023 Dry', sequence: ['SUNNY', 'SUNNY', 'SUNNY', 'CLOUDY', 'SUNNY'] },
+            { name: '2022 Dry', sequence: ['SUNNY', 'SUNNY', 'SUNNY', 'SUNNY', 'SUNNY'] },
+            { name: '2019 Dry Hot', sequence: ['SUNNY', 'SUNNY', 'SUNNY', 'SUNNY', 'SUNNY'] },
+            { name: '2011 Epic Wet Race', sequence: ['LIGHT_RAIN', 'HEAVY_RAIN', 'HEAVY_RAIN', 'LIGHT_RAIN', 'CLOUDY'] }
+        ]
+    },
+    // Default for any track without specific data
+    'default': {
+        name: 'Default',
+        scenarios: [
+            { name: 'Dry Race', sequence: ['SUNNY', 'SUNNY', 'SUNNY', 'CLOUDY', 'SUNNY'] },
+            { name: 'Mixed Conditions', sequence: ['CLOUDY', 'LIGHT_RAIN', 'CLOUDY', 'SUNNY', 'CLOUDY'] },
+            { name: 'Wet Race', sequence: ['LIGHT_RAIN', 'HEAVY_RAIN', 'LIGHT_RAIN', 'CLOUDY', 'SUNNY'] },
+            { name: 'Changing Weather', sequence: ['SUNNY', 'CLOUDY', 'LIGHT_RAIN', 'CLOUDY', 'SUNNY'] }
+        ]
+    }
+};
+
 class Weather {
-    constructor() {
+    constructor(trackId = null) {
         // Weather states in order of progression
         this.states = ['SUNNY', 'CLOUDY', 'LIGHT_RAIN', 'HEAVY_RAIN'];
         this.currentState = 'SUNNY';
         this.targetState = 'SUNNY';
+        
+        // Historical weather mode
+        this.trackId = trackId;
+        this.historicalScenario = null;
+        this.scenarioIndex = 0;
+        this.scenarioName = '';
         
         // Transition timing (in milliseconds)
         this.minCycleDuration = 30000;  // Minimum 30 seconds between weather changes
@@ -28,6 +186,55 @@ class Weather {
         
         // Track wetness (builds up over time in rain, dries in sun)
         this.trackWetness = 0;
+        
+        // Initialize with track if provided
+        if (trackId) {
+            this.initializeHistoricalWeather(trackId);
+        }
+    }
+    
+    /**
+     * Initialize weather based on historical race data for a track
+     */
+    initializeHistoricalWeather(trackId) {
+        this.trackId = trackId;
+        
+        // Find track data (try exact match, then partial match, then default)
+        let trackData = HISTORICAL_WEATHER[trackId.toLowerCase()];
+        
+        if (!trackData) {
+            // Try partial match for tracks loaded from GeoJSON
+            const trackKey = Object.keys(HISTORICAL_WEATHER).find(key => 
+                trackId.toLowerCase().includes(key) || key.includes(trackId.toLowerCase())
+            );
+            trackData = trackKey ? HISTORICAL_WEATHER[trackKey] : HISTORICAL_WEATHER['default'];
+        }
+        
+        // Pick a random historical scenario
+        const scenarios = trackData.scenarios;
+        const randomScenario = scenarios[Math.floor(Math.random() * scenarios.length)];
+        
+        this.historicalScenario = randomScenario.sequence;
+        this.scenarioName = randomScenario.name;
+        this.scenarioIndex = 0;
+        
+        // Set initial weather from the scenario
+        this.currentState = this.historicalScenario[0];
+        this.targetState = this.currentState;
+        this.rainIntensity = this.getStateRainIntensity(this.currentState);
+        
+        // Set initial track wetness based on starting weather
+        if (this.currentState === 'HEAVY_RAIN') {
+            this.trackWetness = 1;
+        } else if (this.currentState === 'LIGHT_RAIN') {
+            this.trackWetness = 0.5;
+        } else {
+            this.trackWetness = 0;
+        }
+        
+        this.slipFactor = Math.max(this.rainIntensity, this.trackWetness * 0.8);
+        
+        console.log(`Weather initialized: ${trackData.name} - ${this.scenarioName}`);
     }
     
     /**
@@ -39,33 +246,33 @@ class Weather {
     }
     
     /**
-     * Get the next weather state based on current conditions
+     * Get the next weather state based on historical scenario or random progression
      */
     getNextState() {
-        const currentIndex = this.states.indexOf(this.currentState);
+        // If we have a historical scenario, follow it
+        if (this.historicalScenario && this.historicalScenario.length > 0) {
+            this.scenarioIndex = (this.scenarioIndex + 1) % this.historicalScenario.length;
+            return this.historicalScenario[this.scenarioIndex];
+        }
         
-        // Weighted random: more likely to stay similar or progress gradually
+        // Otherwise use random weighted transitions
         const rand = Math.random();
         
         if (this.currentState === 'SUNNY') {
-            // From sunny: 60% stay sunny, 30% cloudy, 10% jump to light rain
             if (rand < 0.6) return 'SUNNY';
             if (rand < 0.9) return 'CLOUDY';
             return 'LIGHT_RAIN';
         } else if (this.currentState === 'CLOUDY') {
-            // From cloudy: 20% sunny, 30% stay cloudy, 40% light rain, 10% heavy rain
             if (rand < 0.2) return 'SUNNY';
             if (rand < 0.5) return 'CLOUDY';
             if (rand < 0.9) return 'LIGHT_RAIN';
             return 'HEAVY_RAIN';
         } else if (this.currentState === 'LIGHT_RAIN') {
-            // From light rain: 10% sunny, 20% cloudy, 40% stay light, 30% heavy
             if (rand < 0.1) return 'SUNNY';
             if (rand < 0.3) return 'CLOUDY';
             if (rand < 0.7) return 'LIGHT_RAIN';
             return 'HEAVY_RAIN';
         } else { // HEAVY_RAIN
-            // From heavy rain: 5% sunny, 15% cloudy, 50% light rain, 30% stay heavy
             if (rand < 0.05) return 'SUNNY';
             if (rand < 0.2) return 'CLOUDY';
             if (rand < 0.7) return 'LIGHT_RAIN';
@@ -219,7 +426,14 @@ class Weather {
     }
     
     /**
-     * Force a specific weather state (for testing/debugging)
+     * Get the current scenario name (for display)
+     */
+    getScenarioName() {
+        return this.scenarioName || 'Dynamic Weather';
+    }
+    
+    /**
+     * Force a specific weather state (for testing/debugging or custom mode)
      */
     forceWeather(state) {
         if (this.states.includes(state)) {
@@ -227,6 +441,9 @@ class Weather {
             this.targetState = state;
             this.rainIntensity = this.getStateRainIntensity(state);
             this.transitionProgress = 1;
+            
+            // Clear historical scenario when forcing weather
+            this.historicalScenario = null;
             
             // Immediately set track wetness based on weather
             if (state === 'HEAVY_RAIN') this.trackWetness = 1;
@@ -238,4 +455,3 @@ class Weather {
         }
     }
 }
-
