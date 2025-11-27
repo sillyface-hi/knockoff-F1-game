@@ -1056,7 +1056,7 @@ class Game {
             // Time trials: skip start lights, player can go immediately
             this.raceStarted = true;
             this.raceStartTime = performance.now();
-            this.currentLapStartTime = this.raceStartTime;
+            // Don't start lap timer yet - it will start when player crosses start line
         } else {
             // Race mode: start lights sequence
             this.startSequenceStart = performance.now();
@@ -1822,10 +1822,16 @@ class Game {
             if (lapTimesPanel) lapTimesPanel.style.display = '';
             
             // Update current lap time - green when valid, red when invalid
-            if (lapTimeDisplay && this.currentLapStartTime !== null) {
-                const elapsed = Date.now() - this.currentLapStartTime;
-                lapTimeDisplay.textContent = this.formatTime(elapsed);
-                lapTimeDisplay.style.color = this.currentLapInvalid ? '#ef4444' : '#22c55e'; // red or green
+            if (lapTimeDisplay) {
+                if (this.currentLapStartTime !== null) {
+                    const elapsed = Date.now() - this.currentLapStartTime;
+                    lapTimeDisplay.textContent = this.formatTime(elapsed);
+                    lapTimeDisplay.style.color = this.currentLapInvalid ? '#ef4444' : '#22c55e'; // red or green
+                } else {
+                    // Timer hasn't started yet - show zeros
+                    lapTimeDisplay.textContent = '00:00.000';
+                    lapTimeDisplay.style.color = '#22c55e';
+                }
             }
             
             // Update lap history display with sticky best lap
@@ -1861,10 +1867,16 @@ class Game {
             if (lapTimesPanel) lapTimesPanel.style.display = '';
             
             // Update current lap time (no track limits in race mode, use default color)
-            if (lapTimeDisplay && this.currentLapStartTime !== null) {
-                const elapsed = Date.now() - this.currentLapStartTime;
-                lapTimeDisplay.textContent = this.formatTime(elapsed);
-                lapTimeDisplay.style.color = ''; // Default green from CSS
+            if (lapTimeDisplay) {
+                if (this.currentLapStartTime !== null) {
+                    const elapsed = Date.now() - this.currentLapStartTime;
+                    lapTimeDisplay.textContent = this.formatTime(elapsed);
+                    lapTimeDisplay.style.color = ''; // Default green from CSS
+                } else {
+                    // Timer hasn't started yet - show zeros
+                    lapTimeDisplay.textContent = '00:00.000';
+                    lapTimeDisplay.style.color = '';
+                }
             }
             
             // Update lap history display with sticky best lap
