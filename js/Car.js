@@ -43,14 +43,24 @@ class Car {
 
         this.width = 20;
         this.height = 40;
+        
+        // Weather slip state
+        this.isSlipping = false;
+        this.slipAngle = 0;
+        this.slipDuration = 0;
+        this.slipRecoveryTime = 0;
     }
 
-    update(input, deltaTime, track, cars, weather, raceActive = true) {
+    update(input, deltaTime, track, cars, weather, raceActive = true, weatherSystem = null) {
         // Lateral grip (steering) based on tire, weather and wear.
         // This should NOT affect straight-line acceleration/top speed.
         let gripMultiplier = 1.0;
+        
+        // Get weather state (support both simple string and WeatherSystem object)
+        const isRaining = weatherSystem ? weatherSystem.isWet() : (weather === 'RAIN');
+        const slipFactor = weatherSystem ? weatherSystem.slipFactor : (isRaining ? 0.5 : 0);
 
-        if (weather === 'RAIN') {
+        if (isRaining) {
             // In the wet: wets best, inters decent, slicks much worse.
             if (this.tire === 'WET') gripMultiplier = 1.0;
             else if (this.tire === 'INTER') gripMultiplier = 0.85;
@@ -62,6 +72,11 @@ class Car {
             else if (this.tire === 'HARD') gripMultiplier = 0.7;
             else if (this.tire === 'INTER') gripMultiplier = 0.6;
             else if (this.tire === 'WET') gripMultiplier = 0.5;
+        }
+        
+        // Apply weather grip modifier
+        if (weatherSystem) {
+            gripMultiplier *= weatherSystem.getGripModifier();
         }
 
         // Apply wear effect: as tireWear → 1, reduce effective grip but never below 40%
@@ -84,6 +99,12 @@ class Car {
             this.speed = 0;
             return;
         }
+        
+        // Handle active slip state
+        if (this.isSlipping) {
+            this.updateSlip(deltaTime, track);
+            return; // Skip normal controls while slipping
+        }
 
         if (this.isPlayer && input) {
             // Acceleration (ArrowUp) – independent of tire compound
@@ -91,9 +112,28 @@ class Car {
                 this.speed += this.acceleration * dt;
             }
 
-            // Brake (Space) – constant effect, independent of tire compound
+            // Brake (Space) – with rain slip mechanics
             if (input.keys.Space) {
-                this.speed *= Math.pow(0.97, dt); // Softer braking than before (was 0.9)
+                const baseBrakeForce = 0.97;
+                let brakeForce = baseBrakeForce;
+                
+                // In wet conditions, soft braking can cause slip
+                if (slipFactor > 0.1 && this.speed > 2) {
+                    // Calculate brake effectiveness in rain
+                    const brakeModifier = weatherSystem ? weatherSystem.getBrakeModifier() : (1 - slipFactor * 0.4);
+                    brakeForce = baseBrakeForce + (1 - baseBrakeForce) * (1 - brakeModifier);
+                    
+                    // Soft braking slip check: if braking too gently at speed in rain
+                    // "Too soft" means braking but not enough - the car can aquaplane
+                    const isSoftBraking = brakeForce > 0.95; // Not braking hard enough
+                    const slipChance = slipFactor * 0.3; // Up to 30% chance in heavy rain
+                    
+                    if (isSoftBraking && Math.random() < slipChance * (deltaTime / 100)) {
+                        this.triggerSlip(track, 'brake');
+                    }
+                }
+                
+                this.speed *= Math.pow(brakeForce, dt);
             }
 
             // Reverse / Slow down – also independent of tire compound
@@ -112,6 +152,14 @@ class Car {
                 const speedFactor = Math.min(1, Math.abs(this.speed) / this.maxSpeed); // 0..1
                 const understeerScale = 1 / (1 + speedFactor * 4); // at top speed → ~1/5 steering
                 steerAmount *= understeerScale;
+                
+                // Extra slip chance when steering hard in wet conditions
+                if (slipFactor > 0.2 && (input.keys.ArrowLeft || input.keys.ArrowRight)) {
+                    const steeringSlipChance = slipFactor * 0.1 * speedFactor; // Higher at speed
+                    if (Math.random() < steeringSlipChance * (deltaTime / 200)) {
+                        this.triggerSlip(track, 'corner');
+                    }
+                }
 
                 if (input.keys.ArrowLeft) {
                     this.angle -= steerAmount * flip * dt;
@@ -125,12 +173,69 @@ class Car {
                 // Lazy init AI to avoid circular dependency issues or init order
                 // Assuming AI class is imported or passed
             }
-            if (this.ai) this.ai.update(cars, deltaTime);
+            if (this.ai) this.ai.update(cars, deltaTime, weatherSystem);
         }
 
         // Let AI override movement if it manages its own position along the track
         if (!(this.ai && this.ai.overridesMovement && !this.isPlayer)) {
             this.move(dt);
+        }
+    }
+    
+    /**
+     * Trigger a slip event - car loses control temporarily
+     */
+    triggerSlip(track, type = 'corner') {
+        if (this.isSlipping) return; // Already slipping
+        
+        this.isSlipping = true;
+        this.slipType = type;
+        
+        // Random slip direction
+        this.slipAngle = (Math.random() - 0.5) * 0.8; // Random rotation during slip
+        
+        // Slip duration based on speed (faster = longer slip)
+        const speedRatio = Math.abs(this.speed) / this.maxSpeed;
+        this.slipDuration = 500 + speedRatio * 1000; // 0.5 to 1.5 seconds
+        this.slipRecoveryTime = 0;
+        
+        // Store original speed for recovery
+        this.preSlipSpeed = this.speed;
+        
+        // Reduce speed during slip
+        this.speed *= 0.7;
+    }
+    
+    /**
+     * Update slip state - called during active slip
+     */
+    updateSlip(deltaTime, track) {
+        this.slipRecoveryTime += deltaTime;
+        
+        // Calculate slip progress (0 to 1)
+        const progress = Math.min(1, this.slipRecoveryTime / this.slipDuration);
+        
+        // Apply rotation during slip (fish-tailing effect)
+        const slipIntensity = Math.sin(progress * Math.PI) * (1 - progress * 0.5);
+        this.angle += this.slipAngle * slipIntensity * (deltaTime / 100);
+        
+        // Continue moving but with reduced control
+        const slideDirection = this.angle + this.slipAngle * 0.5;
+        this.x += Math.sin(slideDirection) * this.speed * 0.5;
+        this.y -= Math.cos(slideDirection) * this.speed * 0.5;
+        
+        // Slow down during slip
+        this.speed *= 0.98;
+        
+        // Apply extra slowdown if on grass during slip
+        if (track && !track.isOnTrack(this.x, this.y)) {
+            this.speed *= 0.95;
+        }
+        
+        // End slip when duration is over
+        if (progress >= 1) {
+            this.isSlipping = false;
+            this.slipAngle = 0;
         }
     }
 

@@ -24,6 +24,17 @@ class AI {
         this.lineIndex = 0; // progress along ideal line
         this.trackDistance = null; // scalar distance along track centerline
         this.overridesMovement = true; // tells Car not to apply its own move() for AI
+        
+        // Weather slip state for AI
+        this.isSlipping = false;
+        this.slipStartTime = 0;
+        this.slipDuration = 0;
+        this.slipOffsetX = 0;
+        this.slipOffsetY = 0;
+        this.slipRotation = 0;
+        this.preSlipDistance = 0;
+        this.slipCheckedThisCorner = false;
+        this.lastCurveFactor = 0;
     }
 
     // --- Vector Math Helpers ---
@@ -112,7 +123,7 @@ class AI {
 
     // --- Core Update Loop ---
     // Slot-car style AI: move along track centerline with curvature-based speed
-    update(cars, deltaTime = 16.67) {
+    update(cars, deltaTime = 16.67, weatherSystem = null) {
         if (!this.track || !this.track.waypoints || this.track.waypoints.length < 2) return;
 
         // Normalized delta time for frame-rate independent physics
@@ -122,6 +133,12 @@ class AI {
         if (this.trackDistance === null) {
             const prog = this.track.getProgress(this.car);
             this.trackDistance = prog ? prog.distance : 0;
+        }
+        
+        // Check if we're in a slip state
+        if (this.isSlipping) {
+            this.updateSlip();
+            return;
         }
 
         // 1) Estimate curvature ahead using track geometry
@@ -136,13 +153,63 @@ class AI {
             while (angDiff > Math.PI) angDiff -= Math.PI * 2;
             curveFactor = Math.min(1, Math.abs(angDiff) / (Math.PI / 3)); // up to 60° change
         }
+        
+        // Weather slip check for AI in corners
+        // 40% chance of slipping in corners during wet conditions
+        if (weatherSystem && weatherSystem.isWet()) {
+            const isInCorner = curveFactor > 0.2; // Currently in a corner
+            const enteredNewCorner = isInCorner && this.lastCurveFactor <= 0.2;
+            
+            // Reset corner check when entering a new corner
+            if (enteredNewCorner) {
+                this.slipCheckedThisCorner = false;
+            }
+            
+            // Check for slip only once per corner
+            if (isInCorner && !this.slipCheckedThisCorner) {
+                this.slipCheckedThisCorner = true;
+                
+                // 40% base chance to slip in wet corners
+                const slipChance = 0.4 * weatherSystem.slipFactor;
+                
+                // Tire compound affects slip chance
+                let tireModifier = 1.0;
+                if (this.car.tire === 'WET') tireModifier = 0.3;
+                else if (this.car.tire === 'INTER') tireModifier = 0.5;
+                else if (this.car.tire === 'SOFT') tireModifier = 1.2;
+                else if (this.car.tire === 'MEDIUM') tireModifier = 1.1;
+                // HARD stays at 1.0
+                
+                // Skill affects slip chance (better drivers slip less)
+                const skillModifier = 1.5 - this.skill; // 0.5 to 0.7
+                
+                const finalSlipChance = slipChance * tireModifier * skillModifier;
+                
+                if (Math.random() < finalSlipChance) {
+                    this.triggerSlip(curveFactor);
+                }
+            }
+            
+            // Reset corner flag when leaving corner
+            if (!isInCorner) {
+                this.slipCheckedThisCorner = false;
+            }
+        }
+        
+        this.lastCurveFactor = curveFactor;
 
         // 2) Speed control: fast on straights, slower in heavy turns
         // Keep AI top speed below absolute max so they don't massively outpace player
         // Match internal speed scale of player: keep AI comfortably below player's
         // maximum straight-line speed so they don't feel superhuman.
         const straightMax = this.car.maxSpeed * 0.5;
-        const cornerMax = straightMax * 0.4;
+        let cornerMax = straightMax * 0.4;
+        
+        // In wet conditions, AI should slow down more in corners
+        if (weatherSystem && weatherSystem.isWet()) {
+            cornerMax *= (0.7 + 0.3 * (1 - weatherSystem.slipFactor));
+        }
+        
         const targetSpeed = straightMax - (straightMax - cornerMax) * curveFactor;
 
         if (this.car.speed < targetSpeed) {
@@ -169,6 +236,103 @@ class AI {
             // to the game/drawing angle where 0 = facing up.
             // Rotating the car by θ + π/2 aligns its nose with the tangent.
             this.car.angle = pos.angle + Math.PI / 2;
+        }
+    }
+    
+    /**
+     * Trigger a slip event for AI - car loses control and goes off track
+     */
+    triggerSlip(curveFactor) {
+        this.isSlipping = true;
+        this.slipStartTime = Date.now();
+        this.preSlipDistance = this.trackDistance;
+        
+        // Slip duration based on curve factor (sharper corner = longer slip)
+        this.slipDuration = 800 + curveFactor * 1200; // 0.8 to 2 seconds
+        
+        // Random direction to slip off track
+        const slipDirection = Math.random() > 0.5 ? 1 : -1;
+        const trackWidth = this.track.waypoints[0].width || 200;
+        
+        // How far off track the AI will go
+        this.slipOffsetX = slipDirection * (trackWidth * 0.4 + Math.random() * trackWidth * 0.3);
+        this.slipOffsetY = slipDirection * (trackWidth * 0.2 + Math.random() * trackWidth * 0.2);
+        
+        // Random rotation during slip
+        this.slipRotation = (Math.random() - 0.5) * Math.PI * 0.5; // up to 45 degrees
+        
+        // Store starting position for interpolation
+        this.slipStartX = this.car.x;
+        this.slipStartY = this.car.y;
+        this.slipStartAngle = this.car.angle;
+        
+        // Slow down during slip
+        this.car.speed *= 0.5;
+    }
+    
+    /**
+     * Update slip state - AI slides off track then recovers
+     */
+    updateSlip() {
+        const elapsed = Date.now() - this.slipStartTime;
+        const progress = Math.min(1, elapsed / this.slipDuration);
+        
+        // Slip happens in phases:
+        // 0-0.4: Slide off track
+        // 0.4-0.7: Stay off track, slowing down
+        // 0.7-1.0: Return to track
+        
+        if (progress < 0.4) {
+            // Phase 1: Sliding off track
+            const slideProgress = progress / 0.4;
+            const easeOut = 1 - Math.pow(1 - slideProgress, 2);
+            
+            this.car.x = this.slipStartX + this.slipOffsetX * easeOut;
+            this.car.y = this.slipStartY + this.slipOffsetY * easeOut;
+            this.car.angle = this.slipStartAngle + this.slipRotation * easeOut;
+            
+            // Slow down significantly
+            this.car.speed *= 0.95;
+        } else if (progress < 0.7) {
+            // Phase 2: Stationary off track, recovering
+            this.car.speed *= 0.9;
+            if (this.car.speed < 0.5) this.car.speed = 0.5;
+            
+            // Small wobble while recovering
+            const wobble = Math.sin(elapsed * 0.01) * 0.05;
+            this.car.angle = this.slipStartAngle + this.slipRotation + wobble;
+        } else {
+            // Phase 3: Returning to track
+            const returnProgress = (progress - 0.7) / 0.3;
+            const easeIn = returnProgress * returnProgress;
+            
+            // Get current track position to return to
+            const targetPos = this.track.getPointAtDistance(this.trackDistance);
+            if (targetPos) {
+                const offTrackX = this.slipStartX + this.slipOffsetX;
+                const offTrackY = this.slipStartY + this.slipOffsetY;
+                
+                this.car.x = offTrackX + (targetPos.x - offTrackX) * easeIn;
+                this.car.y = offTrackY + (targetPos.y - offTrackY) * easeIn;
+                this.car.angle = this.slipStartAngle + this.slipRotation * (1 - easeIn) + 
+                                (targetPos.angle + Math.PI / 2) * easeIn;
+                
+                // Gradually regain speed
+                if (this.car.speed < this.car.maxSpeed * 0.3) {
+                    this.car.speed += this.car.acceleration * 0.5;
+                }
+            }
+        }
+        
+        // Slowly advance track distance even during slip (so we don't teleport)
+        this.trackDistance += this.car.speed * 0.3;
+        
+        // End slip when complete
+        if (progress >= 1) {
+            this.isSlipping = false;
+            this.slipOffsetX = 0;
+            this.slipOffsetY = 0;
+            this.slipRotation = 0;
         }
     }
 

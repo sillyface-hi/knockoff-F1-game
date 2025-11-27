@@ -9,7 +9,11 @@ class Game {
         this.input = new InputHandler();
 
         // Game state
-        this.state = 'MENU'; // MENU, TRACK_SELECT, DRIVER_SELECT, TYRE_SELECT, RACE, FINISHED
+        this.state = 'MENU'; // MENU, TRACK_SELECT, DRIVER_SELECT, WEATHER_SELECT, TYRE_SELECT, RACE, FINISHED
+        
+        // Weather mode: 'regular' for dynamic weather, 'custom' for fixed percentage
+        this.weatherMode = 'regular';
+        this.customRainPercentage = 50;
         this.camera = { x: 0, y: 0 };
         // Zoom level (1 = normal, < 1 = zoomed out)
         // Detect mobile/touch devices and zoom out more
@@ -41,6 +45,10 @@ class Game {
 
         // Minimap
         this.minimap = null;
+        
+        // Weather system
+        this.weatherSystem = new Weather();
+        this.weather = 'SUNNY'; // Simple weather string for backward compatibility
 
         // Lap timing
         this.currentLapStartTime = null;
@@ -259,6 +267,71 @@ class Game {
             });
         }
 
+        // Weather selection buttons
+        const weatherRegularBtn = document.getElementById('weather-regular-btn');
+        const weatherCustomBtn = document.getElementById('weather-custom-btn');
+        const customRainContainer = document.getElementById('custom-rain-container');
+        const weatherContinueBtn = document.getElementById('weather-continue-btn');
+        const rainPercentageInput = document.getElementById('rain-percentage-input');
+
+        if (weatherRegularBtn) {
+            weatherRegularBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.weatherMode = 'regular';
+                weatherRegularBtn.classList.add('active');
+                if (weatherCustomBtn) weatherCustomBtn.classList.remove('active');
+                if (customRainContainer) customRainContainer.classList.add('hidden');
+                // Go directly to tyre selection
+                this.showTyreSelection();
+            });
+        }
+
+        if (weatherCustomBtn) {
+            weatherCustomBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.weatherMode = 'custom';
+                weatherCustomBtn.classList.add('active');
+                if (weatherRegularBtn) weatherRegularBtn.classList.remove('active');
+                if (customRainContainer) customRainContainer.classList.remove('hidden');
+            });
+        }
+
+        // Update rain percentage from input
+        if (rainPercentageInput) {
+            rainPercentageInput.addEventListener('input', () => {
+                let val = parseInt(rainPercentageInput.value) || 0;
+                val = Math.max(0, Math.min(100, val));
+                this.customRainPercentage = val;
+            });
+        }
+
+        if (weatherContinueBtn) {
+            weatherContinueBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                // Save the custom rain percentage
+                if (rainPercentageInput) {
+                    this.customRainPercentage = parseInt(rainPercentageInput.value) || 50;
+                }
+                this.showTyreSelection();
+            });
+        }
+
+        const weatherBackBtn = document.getElementById('weather-back-btn');
+        if (weatherBackBtn) {
+            weatherBackBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.backFromWeather();
+            });
+        }
+
+        const weatherMainBtn = document.getElementById('weather-main-btn');
+        if (weatherMainBtn) {
+            weatherMainBtn.addEventListener('click', () => {
+                if (window.MenuSound) MenuSound.playClick();
+                this.goToMainMenu();
+            });
+        }
+
         // Multiplayer buttons
         const multiplayerBtn = document.getElementById('multiplayer-btn');
         if (multiplayerBtn) {
@@ -387,24 +460,53 @@ class Game {
     }
 
     backFromTyre() {
-        const driverSelect = document.getElementById('driver-selection');
+        const weatherSelect = document.getElementById('weather-selection');
         const tyreSelect = document.getElementById('tyre-selection');
         if (tyreSelect) {
             tyreSelect.classList.remove('active');
             tyreSelect.classList.add('hidden');
+        }
+        if (weatherSelect) {
+            weatherSelect.classList.remove('hidden');
+            weatherSelect.classList.add('active');
+        }
+        this.state = 'WEATHER_SELECT';
+        this.selectedTire = 'SOFT';
+    }
+    
+    backFromWeather() {
+        const driverSelect = document.getElementById('driver-selection');
+        const weatherSelect = document.getElementById('weather-selection');
+        if (weatherSelect) {
+            weatherSelect.classList.remove('active');
+            weatherSelect.classList.add('hidden');
         }
         if (driverSelect) {
             driverSelect.classList.remove('hidden');
             driverSelect.classList.add('active');
         }
         this.state = 'DRIVER_SELECT';
-        this.selectedTire = 'SOFT';
+        // Reset weather selection UI
+        this.resetWeatherSelectionUI();
+    }
+    
+    resetWeatherSelectionUI() {
+        const weatherRegularBtn = document.getElementById('weather-regular-btn');
+        const weatherCustomBtn = document.getElementById('weather-custom-btn');
+        const customRainContainer = document.getElementById('custom-rain-container');
+        
+        if (weatherRegularBtn) weatherRegularBtn.classList.add('active');
+        if (weatherCustomBtn) weatherCustomBtn.classList.remove('active');
+        if (customRainContainer) customRainContainer.classList.add('hidden');
+        
+        this.weatherMode = 'regular';
     }
 
     goToMainMenu() {
         const menu = document.getElementById('main-menu');
         const trackSelect = document.getElementById('track-selection');
         const driverSelect = document.getElementById('driver-selection');
+        const weatherSelect = document.getElementById('weather-selection');
         const tyreSelect = document.getElementById('tyre-selection');
         const leaderboardScreen = document.getElementById('leaderboard-screen');
         const shareScreen = document.getElementById('share-time-screen');
@@ -416,7 +518,7 @@ class Game {
         const joinRoom = document.getElementById('join-room-screen');
         const multiplayerWaiting = document.getElementById('multiplayer-waiting');
 
-        [trackSelect, driverSelect, tyreSelect, leaderboardScreen, shareScreen, pauseQuitScreen, hud, results, multiplayerLobby, createRoom, joinRoom, multiplayerWaiting].forEach(el => {
+        [trackSelect, driverSelect, weatherSelect, tyreSelect, leaderboardScreen, shareScreen, pauseQuitScreen, hud, results, multiplayerLobby, createRoom, joinRoom, multiplayerWaiting].forEach(el => {
             if (!el) return;
             el.classList.remove('active');
             el.classList.add('hidden');
@@ -441,6 +543,8 @@ class Game {
         this.selectedDriverId = null;
         this.selectedTire = 'SOFT';
         this.gameMode = 'race';
+        this.weatherMode = 'regular';
+        this.customRainPercentage = 50;
         this.sharePromptOpen = false;
         this.saveKeyHandled = false;
         this.isPaused = false;
@@ -449,6 +553,9 @@ class Game {
         this.pauseKeySnapshot = {};
         const ind = document.getElementById('pause-indicator');
         if (ind) ind.style.display = 'none';
+        
+        // Reset weather selection UI
+        this.resetWeatherSelectionUI();
     }
 
     // ---------------------------------------------------------------------
@@ -765,12 +872,13 @@ class Game {
                     }
                     
                     if (window.MenuSound) MenuSound.playClick();
-                    // In time trials, skip tire selection and use soft tires
+                    // In time trials, skip weather and tire selection and use soft tires
                     if (this.gameMode === 'time_trials') {
                         this.selectedTire = 'SOFT';
+                        this.weatherMode = 'regular';
                         this.startGame();
                     } else {
-                        this.showTyreSelection();
+                        this.showWeatherSelection();
                     }
                 });
                 driverList.appendChild(card);
@@ -778,13 +886,31 @@ class Game {
         }
     }
 
-    showTyreSelection() {
+    showWeatherSelection() {
         const driverSelect = document.getElementById('driver-selection');
-        const tyreSelect = document.getElementById('tyre-selection');
-
+        const weatherSelect = document.getElementById('weather-selection');
+        
         if (driverSelect) {
             driverSelect.classList.remove('active');
             driverSelect.classList.add('hidden');
+        }
+        if (weatherSelect) {
+            weatherSelect.classList.remove('hidden');
+            weatherSelect.classList.add('active');
+            this.state = 'WEATHER_SELECT';
+        }
+        
+        // Reset UI state
+        this.resetWeatherSelectionUI();
+    }
+
+    showTyreSelection() {
+        const weatherSelect = document.getElementById('weather-selection');
+        const tyreSelect = document.getElementById('tyre-selection');
+
+        if (weatherSelect) {
+            weatherSelect.classList.remove('active');
+            weatherSelect.classList.add('hidden');
         }
         if (tyreSelect) {
             tyreSelect.classList.remove('hidden');
@@ -882,6 +1008,15 @@ class Game {
         }
         // Minimap
         this.minimap = new Minimap(this.track);
+        
+        // Apply weather settings based on mode
+        if (this.weatherMode === 'custom') {
+            this.applyCustomWeather();
+        } else {
+            // Regular mode: reset weather system for fresh dynamic weather
+            this.weatherSystem = new Weather();
+        }
+        
         // Reset lap timing for a fresh race
         this.currentLapStartTime = null;
         this.currentLapTime = 0;
@@ -1060,11 +1195,47 @@ class Game {
     }
 
     // ---------------------------------------------------------------------
-    // Weather (placeholder)
+    // Weather System
     // ---------------------------------------------------------------------
-    updateWeather() {
-        this.weather = 'SUNNY';
-        this.rainIntensity = 0;
+    updateWeather(deltaTime) {
+        if (this.weatherMode === 'custom') {
+            // Custom weather mode: use fixed rain percentage
+            // Don't update the weather system dynamically
+            // The weather was already set in startGame()
+        } else {
+            // Regular mode: update the dynamic weather system
+            this.weatherSystem.update(deltaTime);
+        }
+        
+        // Update simple weather string for backward compatibility
+        this.weather = this.weatherSystem.getSimpleWeather();
+        this.rainIntensity = this.weatherSystem.rainIntensity;
+    }
+    
+    applyCustomWeather() {
+        // Convert percentage (0-100) to weather state
+        const percent = this.customRainPercentage;
+        
+        if (percent === 0) {
+            this.weatherSystem.forceWeather('SUNNY');
+        } else if (percent <= 20) {
+            this.weatherSystem.forceWeather('CLOUDY');
+            // Manually adjust track wetness based on percentage
+            this.weatherSystem.trackWetness = percent / 100;
+            this.weatherSystem.slipFactor = this.weatherSystem.trackWetness * 0.5;
+        } else if (percent <= 60) {
+            this.weatherSystem.forceWeather('LIGHT_RAIN');
+            // Scale rain intensity within light rain range
+            this.weatherSystem.rainIntensity = 0.2 + (percent - 20) / 40 * 0.4;
+            this.weatherSystem.trackWetness = percent / 100;
+            this.weatherSystem.slipFactor = Math.max(this.weatherSystem.rainIntensity, this.weatherSystem.trackWetness * 0.8);
+        } else {
+            this.weatherSystem.forceWeather('HEAVY_RAIN');
+            // Scale rain intensity for heavy rain
+            this.weatherSystem.rainIntensity = 0.6 + (percent - 60) / 40 * 0.4;
+            this.weatherSystem.trackWetness = percent / 100;
+            this.weatherSystem.slipFactor = Math.max(this.weatherSystem.rainIntensity, this.weatherSystem.trackWetness * 0.8);
+        }
     }
 
     // ---------------------------------------------------------------------
@@ -1093,7 +1264,7 @@ class Game {
                 return;
             }
 
-            this.updateWeather();
+            this.updateWeather(deltaTime);
 
             // Handle F1-style start light sequence before allowing cars to move
             if (!this.raceStarted && this.startSequenceStart !== null) {
@@ -1121,7 +1292,7 @@ class Game {
                 
                 // Only allow movement once raceStarted is true AND not waiting for opponent
                 const raceActive = this.raceStarted && !this.waitingForOpponent;
-                car.update(this.input, deltaTime, this.track, this.cars, this.weather, raceActive);
+                car.update(this.input, deltaTime, this.track, this.cars, this.weather, raceActive, this.weatherSystem);
             });
             
             // Multiplayer position sync
@@ -1607,6 +1778,13 @@ class Game {
                 const remaining = Math.max(0, Math.min(1, 1 - wear));
                 tireWearFill.style.height = `${remaining * 100}%`;
             }
+            
+            // Update weather icon
+            const weatherIcon = document.getElementById('weather-icon');
+            if (weatherIcon && this.weatherSystem) {
+                weatherIcon.className = this.weatherSystem.getWeatherIconClass();
+                weatherIcon.textContent = this.weatherSystem.getWeatherText();
+            }
         }
 
         // Update start lights UI
@@ -1790,6 +1968,62 @@ class Game {
 
         this.ctx.restore();
     }
+    
+    /**
+     * Draw rain effect overlay
+     */
+    drawRainEffect() {
+        if (!this.weatherSystem) return;
+        
+        const intensity = this.weatherSystem.rainIntensity;
+        const effectiveWidth = this.width / this.cameraZoom;
+        const effectiveHeight = this.height / this.cameraZoom;
+        
+        // Dark overlay based on rain intensity
+        this.ctx.fillStyle = `rgba(100, 120, 150, ${intensity * 0.15})`;
+        this.ctx.fillRect(this.camera.x, this.camera.y, effectiveWidth, effectiveHeight);
+        
+        // Draw rain drops
+        const dropCount = Math.floor(intensity * 150);
+        this.ctx.strokeStyle = `rgba(200, 220, 255, ${0.3 + intensity * 0.3})`;
+        this.ctx.lineWidth = 1;
+        
+        for (let i = 0; i < dropCount; i++) {
+            // Pseudo-random positions that move with time for animation effect
+            const time = Date.now() * 0.001;
+            const seed = i * 1.618033988749895; // Golden ratio for distribution
+            const x = this.camera.x + ((seed * 1000 + time * 200) % effectiveWidth);
+            const y = this.camera.y + ((seed * 700 + time * 500 * (1 + intensity)) % effectiveHeight);
+            const length = 10 + intensity * 15;
+            
+            this.ctx.beginPath();
+            this.ctx.moveTo(x, y);
+            this.ctx.lineTo(x - 2, y + length);
+            this.ctx.stroke();
+        }
+        
+        // Spray effect near cars when raining heavily
+        if (intensity > 0.5) {
+            this.cars.forEach(car => {
+                if (car.speed > 2) {
+                    const sprayIntensity = Math.min(1, car.speed / car.maxSpeed) * intensity;
+                    this.ctx.fillStyle = `rgba(200, 220, 255, ${sprayIntensity * 0.3})`;
+                    
+                    // Spray behind car
+                    this.ctx.save();
+                    this.ctx.translate(car.x, car.y);
+                    this.ctx.rotate(car.angle);
+                    
+                    // Draw spray arc behind car
+                    this.ctx.beginPath();
+                    this.ctx.arc(0, car.height * 0.8, car.width * 1.5, 0, Math.PI);
+                    this.ctx.fill();
+                    
+                    this.ctx.restore();
+                }
+            });
+        }
+    }
 
     // ---------------------------------------------------------------------
     // Device detection
@@ -1811,8 +2045,13 @@ class Game {
     // Rendering
     // ---------------------------------------------------------------------
     render() {
-        this.ctx.fillStyle = this.weather === 'SUNNY' ? '#056608' : '#034405';
+        // Dynamic grass color based on weather (darker when wet)
+        const grassColor = this.weatherSystem && this.weatherSystem.isWet() 
+            ? '#034405' 
+            : '#056608';
+        this.ctx.fillStyle = grassColor;
         this.ctx.fillRect(0, 0, this.width, this.height);
+        
         if (this.state === 'RACE') {
             this.ctx.save();
             // Apply zoom (scale from top-left, then translate)
@@ -1855,12 +2094,12 @@ class Game {
             });
             // Optional debug start line marker – controlled via this.debugStart
             if (this.debugStart && this.track) this.track.drawDebugStart(this.ctx);
-            if (this.weather === 'RAIN') {
-                this.ctx.fillStyle = 'rgba(200,200,255,0.1)';
-                const effectiveWidth = this.width / this.cameraZoom;
-                const effectiveHeight = this.height / this.cameraZoom;
-                this.ctx.fillRect(this.camera.x, this.camera.y, effectiveWidth, effectiveHeight);
+            
+            // Weather overlay effects
+            if (this.weatherSystem && this.weatherSystem.rainIntensity > 0) {
+                this.drawRainEffect();
             }
+            
             this.ctx.restore();
         }
         if (this.state === 'RACE' && this.minimap) {

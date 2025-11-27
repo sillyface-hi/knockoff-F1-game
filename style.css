@@ -644,9 +644,264 @@ h1 {
 #weather-icon {
     width: 50px;
     height: 50px;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.8rem;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+/* Weather state styles */
+.weather-sunny {
+    background: linear-gradient(135deg, rgba(255, 200, 50, 0.3), rgba(255, 150, 0, 0.2));
+    border-color: rgba(255, 200, 50, 0.4);
+}
+
+.weather-cloudy {
+    background: linear-gradient(135deg, rgba(150, 160, 180, 0.3), rgba(100, 110, 130, 0.2));
+    border-color: rgba(150, 160, 180, 0.4);
+}
+
+.weather-light-rain {
+    background: linear-gradient(135deg, rgba(100, 150, 200, 0.3), rgba(80, 120, 160, 0.2));
+    border-color: rgba(100, 150, 200, 0.5);
+    animation: rain-pulse 2s ease-in-out infinite;
+}
+
+.weather-heavy-rain {
+    background: linear-gradient(135deg, rgba(60, 100, 150, 0.4), rgba(40, 70, 120, 0.3));
+    border-color: rgba(60, 100, 200, 0.6);
+    box-shadow: 0 0 10px rgba(100, 150, 255, 0.3);
+    animation: rain-pulse 1s ease-in-out infinite;
+}
+
+@keyframes rain-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* Weather warning indicator for slippery conditions */
+.weather-warning {
+    position: absolute;
+    top: 120px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 150, 0, 0.9);
+    color: #000;
+    padding: 0.5rem 1.5rem;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    animation: warning-flash 1s ease-in-out infinite;
+    z-index: 10;
+}
+
+@keyframes warning-flash {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* Slip indicator overlay */
+.slip-indicator {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(255, 100, 100, 0.2) 100%);
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 5;
+}
+
+.slip-indicator.active {
+    opacity: 1;
+    animation: slip-shake 0.3s ease-in-out;
+}
+
+@keyframes slip-shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+/* Weather Selection */
+.weather-question {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.weather-toggle-container {
+    margin: 1rem 0 2rem 0;
+}
+
+.weather-toggle {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.weather-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1.5rem 2rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 160px;
+    color: #fff;
+}
+
+.weather-option:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-2px);
+}
+
+.weather-option.active {
+    background: rgba(255, 40, 0, 0.2);
+    border-color: var(--accent-color);
+    box-shadow: 0 0 20px rgba(255, 30, 30, 0.3);
+}
+
+.weather-option .option-icon {
+    font-size: 2.5rem;
+}
+
+.weather-option .option-label {
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.weather-option .option-desc {
+    font-size: 0.8rem;
+    opacity: 0.7;
+}
+
+/* Custom Rain Container */
+.custom-rain-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    margin: 1rem 0;
+    padding: 1.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    animation: fadeIn 0.3s ease;
+}
+
+.custom-rain-container.hidden {
+    display: none;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.rain-input-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+    max-width: 300px;
+}
+
+.rain-input-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.rain-input {
+    width: 100px;
+    padding: 0.75rem 1rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    color: #fff;
+    font-family: var(--font-main);
+}
+
+.rain-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.rain-percent-symbol {
+    font-size: 1.5rem;
+    font-weight: 700;
+    opacity: 0.8;
+}
+
+.rain-slider-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.rain-slider {
+    width: 100%;
+    height: 12px;
+    border-radius: 6px;
+    background: linear-gradient(to right, 
+        #ffd700 0%,      /* Sunny yellow */
+        #87ceeb 30%,     /* Light blue */
+        #4169e1 60%,     /* Rain blue */
+        #1a1a3e 100%     /* Storm dark */
+    );
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+}
+
+.rain-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid var(--accent-color);
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.rain-slider::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid var(--accent-color);
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.rain-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    opacity: 0.7;
 }
 
 /* Results Screen */
@@ -1023,6 +1278,40 @@ h1 {
         width: 100%;
         max-width: 250px;
     }
+    
+    /* Weather Selection */
+    .weather-question {
+        font-size: 0.95rem;
+        padding: 0 1rem;
+    }
+    
+    .weather-toggle {
+        flex-direction: column;
+        gap: 0.8rem;
+    }
+    
+    .weather-option {
+        padding: 1rem 1.5rem;
+        min-width: 200px;
+    }
+    
+    .weather-option .option-icon {
+        font-size: 2rem;
+    }
+    
+    .weather-option .option-label {
+        font-size: 1rem;
+    }
+    
+    .custom-rain-container {
+        padding: 1rem;
+        width: 90%;
+    }
+    
+    .rain-input {
+        width: 80px;
+        font-size: 1.2rem;
+    }
 }
 
 /* Extra small screens (very narrow phones) */
@@ -1161,6 +1450,12 @@ h1 {
     #tire-wear-bar {
         height: 35px;
         width: 8px;
+    }
+    
+    #weather-icon {
+        width: 35px;
+        height: 35px;
+        font-size: 1.2rem;
     }
     
     /* Minimap smaller on mobile */

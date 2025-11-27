@@ -71,6 +71,46 @@
                 </div>
             </div>
 
+            <!-- Weather Selection -->
+            <div id="weather-selection" class="screen hidden">
+                <div class="menu-content">
+                    <h2>WEATHER SYSTEM</h2>
+                    <p class="weather-question">Do you want regular weather or your own percentage?</p>
+                    
+                    <div class="weather-toggle-container">
+                        <div class="weather-toggle">
+                            <button id="weather-regular-btn" class="weather-option active">
+                                <span class="option-icon">🌤️</span>
+                                <span class="option-label">REGULAR</span>
+                                <span class="option-desc">Dynamic weather changes</span>
+                            </button>
+                            <button id="weather-custom-btn" class="weather-option">
+                                <span class="option-icon">🎚️</span>
+                                <span class="option-label">CUSTOM</span>
+                                <span class="option-desc">Set your own rain %</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Custom rain percentage input (hidden by default) -->
+                    <div id="custom-rain-container" class="custom-rain-container hidden">
+                        <div class="rain-input-block">
+                            <span class="label">RAIN PERCENTAGE</span>
+                            <div class="rain-input-row">
+                                <input type="number" id="rain-percentage-input" class="rain-input" min="0" max="100" value="50" placeholder="0-100">
+                                <span class="rain-percent-symbol">%</span>
+                            </div>
+                        </div>
+                        <button id="weather-continue-btn" class="btn-primary">CONTINUE</button>
+                    </div>
+                    
+                    <div class="menu-actions">
+                        <button id="weather-back-btn" class="btn-secondary">BACK</button>
+                        <button id="weather-main-btn" class="btn-secondary">BACK TO MAIN MENU</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Tyre Selection -->
             <div id="tyre-selection" class="screen hidden">
                 <div class="menu-content">
@@ -280,6 +320,7 @@
     <script src="js/Data.js"></script>
     <script src="js/InputHandler.js"></script>
     <script src="js/Track.js"></script>
+    <script src="js/Weather.js"></script>
     <script src="js/AI.js"></script>
     <script src="js/Car.js"></script>
     <script src="js/Minimap.js"></script>
