@@ -1,3 +1,8 @@
+// Target frame time for physics normalization
+// 16.67 = normal speed (60 FPS baseline), lower = faster gameplay
+// 11.11 = 1.5X speed, 8.33 = 2X speed
+const AI_TARGET_FRAME_TIME = 5;
+
 class AI {
     constructor(car, track) {
         this.car = car;
@@ -107,8 +112,11 @@ class AI {
 
     // --- Core Update Loop ---
     // Slot-car style AI: move along track centerline with curvature-based speed
-    update(cars) {
+    update(cars, deltaTime = 16.67) {
         if (!this.track || !this.track.waypoints || this.track.waypoints.length < 2) return;
+
+        // Normalized delta time for frame-rate independent physics
+        const dt = deltaTime / AI_TARGET_FRAME_TIME;
 
         // Initialize scalar distance along track if needed
         if (this.trackDistance === null) {
@@ -138,15 +146,18 @@ class AI {
         const targetSpeed = straightMax - (straightMax - cornerMax) * curveFactor;
 
         if (this.car.speed < targetSpeed) {
-            this.car.speed += this.car.acceleration * this.skill;
+            this.car.speed += this.car.acceleration * this.skill * dt;
         } else if (this.car.speed > targetSpeed * 1.05) {
-            this.car.speed *= 0.98; // gentle braking / drag
+            this.car.speed *= Math.pow(0.98, dt); // gentle braking / drag (frame-rate independent)
         }
+
+        // Apply same friction as player car for consistent physics
+        this.car.speed *= Math.pow(this.car.friction, dt);
 
         if (this.car.speed < 0) this.car.speed = 0;
 
-        // 3) Advance along track
-        this.trackDistance += this.car.speed;
+        // 3) Advance along track (frame-rate independent)
+        this.trackDistance += this.car.speed * dt;
 
         // 4) Place car on track centerline and align heading with tangent
         const pos = this.track.getPointAtDistance(this.trackDistance);

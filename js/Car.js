@@ -1,3 +1,8 @@
+// Target frame time for physics normalization
+// 16.67 = normal speed (60 FPS baseline), lower = faster gameplay
+// 11.11 = 1.5X speed, 8.33 = 2X speed
+const TARGET_FRAME_TIME = 5;
+
 class Car {
     constructor(x, y, color = '#ff0000', isPlayer = false) {
         this.x = x;
@@ -65,10 +70,13 @@ class Car {
         if (wearFactor < 0.4) wearFactor = 0.4;
         this.currentGrip = gripMultiplier * wearFactor;
 
+        // Normalized delta time for frame-rate independent physics
+        const dt = deltaTime / TARGET_FRAME_TIME;
+
         // Check for Grass
         if (track && !track.isOnTrack(this.x, this.y)) {
             this.currentGrip *= 0.9; // less turning grip on grass
-            this.speed *= 0.99; // slight straight-line slowdown on grass
+            this.speed *= Math.pow(0.99, dt); // slight straight-line slowdown on grass
         }
 
         // Hold cars stationary until race start (used for F1-style start lights)
@@ -80,17 +88,17 @@ class Car {
         if (this.isPlayer && input) {
             // Acceleration (ArrowUp) – independent of tire compound
             if (input.keys.ArrowUp) {
-                this.speed += this.acceleration;
+                this.speed += this.acceleration * dt;
             }
 
             // Brake (Space) – constant effect, independent of tire compound
             if (input.keys.Space) {
-                this.speed *= 0.97; // Softer braking than before (was 0.9)
+                this.speed *= Math.pow(0.97, dt); // Softer braking than before (was 0.9)
             }
 
             // Reverse / Slow down – also independent of tire compound
             if (input.keys.ArrowDown) {
-                this.speed -= this.acceleration * 0.5;
+                this.speed -= this.acceleration * 0.5 * dt;
             }
 
             // Steering with speed-sensitive understeer
@@ -106,10 +114,10 @@ class Car {
                 steerAmount *= understeerScale;
 
                 if (input.keys.ArrowLeft) {
-                    this.angle -= steerAmount * flip;
+                    this.angle -= steerAmount * flip * dt;
                 }
                 if (input.keys.ArrowRight) {
-                    this.angle += steerAmount * flip;
+                    this.angle += steerAmount * flip * dt;
                 }
             }
         } else if (!this.isPlayer) {
@@ -117,29 +125,29 @@ class Car {
                 // Lazy init AI to avoid circular dependency issues or init order
                 // Assuming AI class is imported or passed
             }
-            if (this.ai) this.ai.update(cars);
+            if (this.ai) this.ai.update(cars, deltaTime);
         }
 
         // Let AI override movement if it manages its own position along the track
         if (!(this.ai && this.ai.overridesMovement && !this.isPlayer)) {
-            this.move();
+            this.move(dt);
         }
     }
 
-    move() {
+    move(dt = 1) {
         // Cap speed
         if (this.speed > this.maxSpeed) this.speed = this.maxSpeed;
         if (this.speed < -this.maxSpeed / 2) this.speed = -this.maxSpeed / 2;
 
-        // Apply friction
-        this.speed *= this.friction;
+        // Apply friction (frame-rate independent)
+        this.speed *= Math.pow(this.friction, dt);
 
         // Stop completely if very slow
         if (Math.abs(this.speed) < 0.01) this.speed = 0;
 
-        // Calculate velocity vector
-        this.x += Math.sin(this.angle) * this.speed;
-        this.y -= Math.cos(this.angle) * this.speed;
+        // Calculate velocity vector (frame-rate independent)
+        this.x += Math.sin(this.angle) * this.speed * dt;
+        this.y -= Math.cos(this.angle) * this.speed * dt;
     }
 
     draw(ctx) {
