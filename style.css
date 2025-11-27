@@ -140,10 +140,14 @@ h2 {
 }
 
 .credits {
-    margin-top: 2rem;
+    position: absolute;
+    bottom: 2rem;
+    right: 2rem;
+    font-family: var(--font-main);
     font-size: 0.9rem;
+    font-weight: 300;
     opacity: 0.6;
-    letter-spacing: 2px;
+    letter-spacing: 1px;
 }
 
 /* Track Selection */
